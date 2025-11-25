@@ -74,15 +74,20 @@ function parseHTML(html) {
       '.property-card',
       '[data-test="property-card"]',
       '.l-searchResult',
-      '.propertyCard-wrapper'
+      '.propertyCard-wrapper',
+      '[class*="propertyCard"]',
+      '[class*="SearchResult"]',
+      'div[id^="property-"]'
     ];
     
     let propertyCards = null;
     let usedSelector = null;
     
     // Try each selector until we find property cards
+    console.log('🔎 Trying selectors to find property cards...');
     for (const selector of selectors) {
       const elements = $(selector);
+      console.log(`  Selector "${selector}": ${elements.length} elements`);
       if (elements.length > 0) {
         propertyCards = elements;
         usedSelector = selector;
@@ -92,7 +97,24 @@ function parseHTML(html) {
     
     // Handle case where no property cards are found
     if (!propertyCards || propertyCards.length === 0) {
-      console.log('No property cards found on page');
+      console.log('❌ No property cards found on page');
+      console.log('📋 Tried selectors:', selectors.join(', '));
+      console.log('📄 HTML preview (first 1000 chars):');
+      console.log(html.substring(0, 1000));
+      console.log('🔍 Looking for divs with "property" in class name...');
+      const allDivs = $('div[class]');
+      const propertyClasses = new Set();
+      allDivs.each((i, el) => {
+        const className = $(el).attr('class');
+        if (className && className.toLowerCase().includes('property')) {
+          propertyClasses.add(className);
+        }
+      });
+      if (propertyClasses.size > 0) {
+        console.log('Found classes with "property":', Array.from(propertyClasses).slice(0, 20).join(', '));
+      } else {
+        console.log('No classes containing "property" found');
+      }
       return {
         $,
         propertyCards: [],
@@ -418,24 +440,49 @@ function extractProperty($, element, distressKeywords = []) {
 
 /**
  * Validates the input object
- * @param {Object} input - The input object from Apify.getInput()
- * @throws {Error} If url field is missing, empty, or invalid
+ * @param {Object} input - The input object from Actor.getInput()
+ * @throws {Error} If neither url nor urls field is provided
  */
 function validateInput(input) {
   if (!input) {
-    throw new Error('Input validation failed: No input provided. Please provide an input object with a "url" field.');
+    throw new Error('Input validation failed: No input provided. Please provide an input object with a "url" or "urls" field.');
   }
   
-  if (!input.url) {
-    throw new Error('Input validation failed: Missing required "url" field. Please provide a Rightmove search URL.');
+  // Check if either url or urls is provided
+  const hasUrl = input.url && typeof input.url === 'string' && input.url.trim() !== '';
+  const hasUrls = input.urls && Array.isArray(input.urls) && input.urls.length > 0;
+  
+  if (!hasUrl && !hasUrls) {
+    throw new Error('Input validation failed: Must provide either "url" (string) or "urls" (array of strings). Please provide at least one Rightmove search URL.');
   }
   
-  if (typeof input.url !== 'string') {
-    throw new Error(`Input validation failed: "url" field must be a string, but received type: ${typeof input.url}`);
+  // Validate url if provided
+  if (input.url) {
+    if (typeof input.url !== 'string') {
+      throw new Error(`Input validation failed: "url" field must be a string, but received type: ${typeof input.url}`);
+    }
+    
+    if (input.url.trim() === '') {
+      throw new Error('Input validation failed: "url" field cannot be empty. Please provide a valid Rightmove search URL.');
+    }
   }
   
-  if (input.url.trim() === '') {
-    throw new Error('Input validation failed: "url" field cannot be empty. Please provide a valid Rightmove search URL.');
+  // Validate urls if provided
+  if (input.urls) {
+    if (!Array.isArray(input.urls)) {
+      throw new Error(`Input validation failed: "urls" field must be an array, but received type: ${typeof input.urls}`);
+    }
+    
+    if (input.urls.length === 0) {
+      throw new Error('Input validation failed: "urls" array cannot be empty. Please provide at least one URL.');
+    }
+    
+    // Validate each URL in the array
+    input.urls.forEach((url, index) => {
+      if (typeof url !== 'string' || url.trim() === '') {
+        throw new Error(`Input validation failed: urls[${index}] must be a non-empty string.`);
+      }
+    });
   }
 }
 
@@ -461,8 +508,16 @@ function processInput(input) {
     ? input.distressKeywords
     : ['reduced', 'chain free', 'auction', 'motivated', 'cash buyers', 'needs renovation'];
 
+  // Handle both single url and multiple urls
+  let urls = [];
+  if (input.urls && Array.isArray(input.urls) && input.urls.length > 0) {
+    urls = input.urls;
+  } else if (input.url) {
+    urls = [input.url];
+  }
+
   return {
-    url: input.url,
+    urls,
     maxItems,
     maxPages,
     useProxy,
@@ -611,26 +666,42 @@ async function main() {
     
     // Log input configuration at startup
     console.log('=== Actor Configuration ===');
-    console.log(`URL: ${input.url}`);
-    console.log(`Max items: ${input.maxItems}`);
-    console.log(`Max pages: ${input.maxPages}`);
+    console.log(`URLs to scrape: ${input.urls.length}`);
+    input.urls.forEach((url, i) => console.log(`  ${i + 1}. ${url}`));
+    console.log(`Max items per URL: ${input.maxItems}`);
+    console.log(`Max pages per URL: ${input.maxPages}`);
     console.log(`Use proxy: ${input.useProxy}`);
     console.log(`Distress keywords: [${input.distressKeywords.join(', ')}]`);
     console.log('===========================');
     
-    // Scrape properties with pagination support
-    const result = await scrapeProperties(input.url, input.maxItems, input.maxPages, input.distressKeywords, input.useProxy);
+    // Scrape properties from all URLs
+    const allProperties = [];
+    let totalPagesProcessed = 0;
     
-    // Push results to Apify dataset
-    console.log('Saving results to dataset...');
-    await Actor.pushData(result.properties);
+    for (let i = 0; i < input.urls.length; i++) {
+      const url = input.urls[i];
+      console.log(`\n=== Processing URL ${i + 1}/${input.urls.length} ===`);
+      console.log(`URL: ${url}`);
+      
+      const result = await scrapeProperties(url, input.maxItems, input.maxPages, input.distressKeywords, input.useProxy);
+      
+      allProperties.push(...result.properties);
+      totalPagesProcessed += result.pagesProcessed;
+      
+      console.log(`Extracted ${result.properties.length} properties from ${result.pagesProcessed} page(s) for this URL`);
+    }
+    
+    // Push all results to Apify dataset
+    console.log('\nSaving results to dataset...');
+    await Actor.pushData(allProperties);
     
     // Log final summary
-    console.log('=== Scraping Summary ===');
-    console.log(`Total pages processed: ${result.pagesProcessed}`);
-    console.log(`Total items extracted: ${result.properties.length}`);
-    console.log(`Items with distress signals: ${result.properties.filter(p => p.distressScoreRule > 0).length}`);
-    console.log('========================');
+    console.log('\n=== Final Scraping Summary ===');
+    console.log(`Total URLs processed: ${input.urls.length}`);
+    console.log(`Total pages processed: ${totalPagesProcessed}`);
+    console.log(`Total items extracted: ${allProperties.length}`);
+    console.log(`Items with distress signals: ${allProperties.filter(p => p.distressScoreRule > 0).length}`);
+    console.log('==============================');
     
     await Actor.exit();
   } catch (error) {
