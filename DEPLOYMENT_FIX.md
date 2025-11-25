@@ -95,3 +95,38 @@ The actor should now:
 ## Commit Hash
 
 `6ca4f7cc9322884730ff4b67a7e1a0d1bd4cccbd`
+
+---
+
+## Update: Second Fix Applied
+
+### Additional Issue Found
+
+After fixing the Apify SDK issue, we encountered:
+
+```
+Error: got is not a function
+```
+
+### Root Cause
+
+The `got` v12 library wasn't working properly in the Apify environment.
+
+### Solution
+
+Replaced `got` with native `fetch` API (available in Node 20):
+
+- Removed `got` dependency
+- Added `https-proxy-agent` for proxy support
+- Updated `fetchPage()` to use fetch API
+- Updated all 77 tests to mock fetch
+
+### Final Status
+
+✅ **All 77 tests passing**
+✅ **Both issues resolved**
+✅ **Ready for deployment**
+
+### Commit Hash
+
+`15bce7e6607d303347265fcf874822c7d9c2f2fa`
