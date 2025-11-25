@@ -1,5 +1,4 @@
 const { Actor } = require('apify');
-const got = require('got');
 const cheerio = require('cheerio');
 
 /**
@@ -23,14 +22,21 @@ async function fetchPage(url, useProxy = false) {
     if (useProxy) {
       const proxyConfiguration = await Actor.createProxyConfiguration();
       const proxyUrl = await proxyConfiguration.newUrl();
-      options.proxyUrl = proxyUrl;
+      // For fetch API, we need to use an agent with proxy
+      const { HttpsProxyAgent } = require('https-proxy-agent');
+      options.agent = new HttpsProxyAgent(proxyUrl);
       console.log('Using Apify proxy for request');
     }
     
-    const response = await got(url, options);
+    const response = await fetch(url, options);
     
-    console.log(`Successfully fetched page (status: ${response.statusCode})`);
-    return response.body;
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const body = await response.text();
+    console.log(`Successfully fetched page (status: ${response.status})`);
+    return body;
   } catch (error) {
     // Log detailed error information
     if (error.response) {

@@ -1,6 +1,5 @@
-// Mock got module before requiring main
-const mockGot = jest.fn();
-jest.mock('got', () => mockGot);
+// Mock fetch API (available in Node 20+)
+global.fetch = jest.fn();
 
 // Mock apify module
 const mockActor = {
@@ -187,9 +186,9 @@ describe('End-to-End Integration Tests', () => {
       });
 
       // Mock HTTP response
-      mockGot.mockResolvedValue({
-        statusCode: 200,
-        body: mockHTML
+      global.fetch.mockResolvedValue({
+        ok: true,ok: true,status: 200,
+        text: async () => mockHTML
       });
 
       // Run the actor
@@ -202,8 +201,8 @@ describe('End-to-End Integration Tests', () => {
       expect(mockActor.getInput).toHaveBeenCalledTimes(1);
 
       // Verify HTTP request was made without proxy
-      expect(mockGot).toHaveBeenCalledTimes(1);
-      expect(mockGot).toHaveBeenCalledWith(
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledWith(
         'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490',
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -212,7 +211,7 @@ describe('End-to-End Integration Tests', () => {
         })
       );
       // Verify no proxy was used
-      expect(mockGot.mock.calls[0][1]).not.toHaveProperty('proxyUrl');
+      expect(global.fetch.mock.calls[0][1]).not.toHaveProperty('agent');
 
       // Verify data was pushed
       expect(mockActor.pushData).toHaveBeenCalledTimes(1);
@@ -268,9 +267,9 @@ describe('End-to-End Integration Tests', () => {
         url: 'https://www.rightmove.co.uk/test'
       });
 
-      mockGot.mockResolvedValue({
-        statusCode: 200,
-        body: mockHTML
+      global.fetch.mockResolvedValue({
+        ok: true,ok: true,status: 200,
+        text: async () => mockHTML
       });
 
       await main();
@@ -348,14 +347,14 @@ describe('End-to-End Integration Tests', () => {
       });
 
       // Mock HTTP responses for both pages
-      mockGot
+      global.fetch
         .mockResolvedValueOnce({
-          statusCode: 200,
-          body: mockHTMLPage1
+          ok: true,ok: true,status: 200,
+          text: async () => mockHTMLPage1
         })
         .mockResolvedValueOnce({
-          statusCode: 200,
-          body: mockHTMLPage2
+          ok: true,ok: true,status: 200,
+          text: async () => mockHTMLPage2
         });
 
       // Run the actor
@@ -365,23 +364,23 @@ describe('End-to-End Integration Tests', () => {
       expect(mockActor.createProxyConfiguration).toHaveBeenCalledTimes(2);
 
       // Verify HTTP requests were made with proxy
-      expect(mockGot).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
       
       // Check first page request
-      expect(mockGot).toHaveBeenNthCalledWith(
+      expect(global.fetch).toHaveBeenNthCalledWith(
         1,
         'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=TEST',
         expect.objectContaining({
-          proxyUrl: 'http://proxy.apify.com:8000'
+          agent: expect.any(Object)
         })
       );
 
       // Check second page request (with index=24)
-      expect(mockGot).toHaveBeenNthCalledWith(
+      expect(global.fetch).toHaveBeenNthCalledWith(
         2,
         'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=TEST&index=24',
         expect.objectContaining({
-          proxyUrl: 'http://proxy.apify.com:8000'
+          agent: expect.any(Object)
         })
       );
 
@@ -431,14 +430,14 @@ describe('End-to-End Integration Tests', () => {
         maxPages: 5   // But allow up to 5 pages
       });
 
-      mockGot
-        .mockResolvedValueOnce({ statusCode: 200, body: mockHTMLWithProperties(1) })
-        .mockResolvedValueOnce({ statusCode: 200, body: mockHTMLWithProperties(3) });
+      global.fetch
+        .mockResolvedValueOnce({ ok: true,ok: true,status: 200, text: async () => mockHTMLWithProperties(1) })
+        .mockResolvedValueOnce({ ok: true,ok: true,status: 200, text: async () => mockHTMLWithProperties(3) });
 
       await main();
 
       // Should only fetch 2 pages (to get 3 items)
-      expect(mockGot).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
 
       const pushedData = mockActor.pushData.mock.calls[0][0];
       // Should only have 3 items despite more being available
@@ -475,14 +474,14 @@ describe('End-to-End Integration Tests', () => {
         maxPages: 5
       });
 
-      mockGot
-        .mockResolvedValueOnce({ statusCode: 200, body: mockHTMLWithProperties })
-        .mockResolvedValueOnce({ statusCode: 200, body: mockHTMLEmpty });
+      global.fetch
+        .mockResolvedValueOnce({ ok: true,ok: true,status: 200, text: async () => mockHTMLWithProperties })
+        .mockResolvedValueOnce({ ok: true,ok: true,status: 200, text: async () => mockHTMLEmpty });
 
       await main();
 
       // Should stop after 2 pages (second page is empty)
-      expect(mockGot).toHaveBeenCalledTimes(2);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
 
       const pushedData = mockActor.pushData.mock.calls[0][0];
       expect(pushedData).toHaveLength(1);
@@ -511,7 +510,7 @@ describe('End-to-End Integration Tests', () => {
         // Using default distress keywords
       });
 
-      mockGot.mockResolvedValue({ statusCode: 200, body: mockHTML });
+      global.fetch.mockResolvedValue({ ok: true,ok: true,status: 200, text: async () => mockHTML });
 
       await main();
 
@@ -553,7 +552,7 @@ describe('End-to-End Integration Tests', () => {
         url: 'https://www.rightmove.co.uk/test'
       });
 
-      mockGot.mockResolvedValue({ statusCode: 200, body: mockHTML });
+      global.fetch.mockResolvedValue({ ok: true,ok: true,status: 200, text: async () => mockHTML });
 
       await main();
 
@@ -624,7 +623,7 @@ describe('End-to-End Integration Tests', () => {
         distressKeywords: ['reduced', 'auction']
       });
 
-      mockGot.mockResolvedValue({ statusCode: 200, body: mockHTML });
+      global.fetch.mockResolvedValue({ ok: true,ok: true,status: 200, text: async () => mockHTML });
 
       await main();
 
@@ -657,7 +656,7 @@ describe('End-to-End Integration Tests', () => {
         url: 'https://www.rightmove.co.uk/test'
       });
 
-      mockGot.mockRejectedValue(new Error('Network timeout'));
+      global.fetch.mockRejectedValue(new Error('Network timeout'));
 
       await expect(main()).rejects.toThrow();
       
@@ -1721,4 +1720,9 @@ describe('Property-Based Tests', () => {
     });
   });
 });
+
+
+
+
+
 
