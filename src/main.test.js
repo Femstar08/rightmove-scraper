@@ -3,14 +3,16 @@ const mockGot = jest.fn();
 jest.mock('got', () => mockGot);
 
 // Mock apify module
-const mockApify = {
+const mockActor = {
   init: jest.fn(),
   getInput: jest.fn(),
   pushData: jest.fn(),
   exit: jest.fn(),
   createProxyConfiguration: jest.fn()
 };
-jest.mock('apify', () => mockApify);
+jest.mock('apify', () => ({
+  Actor: mockActor
+}));
 
 const { 
   detectDistress, 
@@ -148,9 +150,9 @@ describe('End-to-End Integration Tests', () => {
   beforeEach(() => {
     // Clear all mocks before each test
     jest.clearAllMocks();
-    mockApify.init.mockResolvedValue(undefined);
-    mockApify.pushData.mockResolvedValue(undefined);
-    mockApify.exit.mockResolvedValue(undefined);
+    mockActor.init.mockResolvedValue(undefined);
+    mockActor.pushData.mockResolvedValue(undefined);
+    mockActor.exit.mockResolvedValue(undefined);
   });
 
   describe('Single page, no proxy, default distress keywords', () => {
@@ -180,7 +182,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       // Mock input
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490'
       });
 
@@ -194,10 +196,10 @@ describe('End-to-End Integration Tests', () => {
       await main();
 
       // Verify initialization
-      expect(mockApify.init).toHaveBeenCalledTimes(1);
+      expect(mockActor.init).toHaveBeenCalledTimes(1);
 
       // Verify input was read
-      expect(mockApify.getInput).toHaveBeenCalledTimes(1);
+      expect(mockActor.getInput).toHaveBeenCalledTimes(1);
 
       // Verify HTTP request was made without proxy
       expect(mockGot).toHaveBeenCalledTimes(1);
@@ -213,8 +215,8 @@ describe('End-to-End Integration Tests', () => {
       expect(mockGot.mock.calls[0][1]).not.toHaveProperty('proxyUrl');
 
       // Verify data was pushed
-      expect(mockApify.pushData).toHaveBeenCalledTimes(1);
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      expect(mockActor.pushData).toHaveBeenCalledTimes(1);
+      const pushedData = mockActor.pushData.mock.calls[0][0];
 
       // Verify output shape is stable with all fields present
       expect(Array.isArray(pushedData)).toBe(true);
@@ -245,7 +247,7 @@ describe('End-to-End Integration Tests', () => {
       });
 
       // Verify actor exited cleanly
-      expect(mockApify.exit).toHaveBeenCalledTimes(1);
+      expect(mockActor.exit).toHaveBeenCalledTimes(1);
     });
 
     test('should handle missing fields gracefully with null values', async () => {
@@ -262,7 +264,7 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test'
       });
 
@@ -273,7 +275,7 @@ describe('End-to-End Integration Tests', () => {
 
       await main();
 
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      const pushedData = mockActor.pushData.mock.calls[0][0];
       
       // Verify all fields are present with null for missing data
       expect(pushedData[0]).toEqual({
@@ -332,7 +334,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       // Mock input with custom configuration
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=TEST',
         maxItems: 10,
         maxPages: 2,
@@ -341,7 +343,7 @@ describe('End-to-End Integration Tests', () => {
       });
 
       // Mock proxy configuration
-      mockApify.createProxyConfiguration.mockResolvedValue({
+      mockActor.createProxyConfiguration.mockResolvedValue({
         newUrl: () => 'http://proxy.apify.com:8000'
       });
 
@@ -360,7 +362,7 @@ describe('End-to-End Integration Tests', () => {
       await main();
 
       // Verify proxy was created
-      expect(mockApify.createProxyConfiguration).toHaveBeenCalledTimes(2);
+      expect(mockActor.createProxyConfiguration).toHaveBeenCalledTimes(2);
 
       // Verify HTTP requests were made with proxy
       expect(mockGot).toHaveBeenCalledTimes(2);
@@ -384,7 +386,7 @@ describe('End-to-End Integration Tests', () => {
       );
 
       // Verify data was pushed
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      const pushedData = mockActor.pushData.mock.calls[0][0];
       expect(pushedData).toHaveLength(3);
 
       // Verify distress detection with custom keywords
@@ -423,7 +425,7 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test',
         maxItems: 3,  // Only want 3 items
         maxPages: 5   // But allow up to 5 pages
@@ -438,7 +440,7 @@ describe('End-to-End Integration Tests', () => {
       // Should only fetch 2 pages (to get 3 items)
       expect(mockGot).toHaveBeenCalledTimes(2);
 
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      const pushedData = mockActor.pushData.mock.calls[0][0];
       // Should only have 3 items despite more being available
       expect(pushedData).toHaveLength(3);
     });
@@ -467,7 +469,7 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test',
         maxItems: 50,
         maxPages: 5
@@ -482,7 +484,7 @@ describe('End-to-End Integration Tests', () => {
       // Should stop after 2 pages (second page is empty)
       expect(mockGot).toHaveBeenCalledTimes(2);
 
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      const pushedData = mockActor.pushData.mock.calls[0][0];
       expect(pushedData).toHaveLength(1);
     });
   });
@@ -504,7 +506,7 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test'
         // Using default distress keywords
       });
@@ -513,7 +515,7 @@ describe('End-to-End Integration Tests', () => {
 
       await main();
 
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      const pushedData = mockActor.pushData.mock.calls[0][0];
       
       // Should match all 6 default keywords
       expect(pushedData[0].distressKeywordsMatched).toHaveLength(6);
@@ -547,7 +549,7 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test'
       });
 
@@ -555,7 +557,7 @@ describe('End-to-End Integration Tests', () => {
 
       await main();
 
-      const pushedData = mockApify.pushData.mock.calls[0][0];
+      const pushedData = mockActor.pushData.mock.calls[0][0];
       
       const requiredFields = [
         'url', 'address', 'price', 'description', 
@@ -614,7 +616,7 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test',
         maxItems: 10,
         maxPages: 2,
@@ -651,7 +653,7 @@ describe('End-to-End Integration Tests', () => {
 
   describe('Error handling', () => {
     test('should handle network errors gracefully', async () => {
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         url: 'https://www.rightmove.co.uk/test'
       });
 
@@ -660,11 +662,11 @@ describe('End-to-End Integration Tests', () => {
       await expect(main()).rejects.toThrow();
       
       // Verify error was logged
-      expect(mockApify.exit).not.toHaveBeenCalled();
+      expect(mockActor.exit).not.toHaveBeenCalled();
     });
 
     test('should validate input and reject missing URL', async () => {
-      mockApify.getInput.mockResolvedValue({
+      mockActor.getInput.mockResolvedValue({
         maxItems: 50
         // Missing url field
       });
@@ -1719,3 +1721,4 @@ describe('Property-Based Tests', () => {
     });
   });
 });
+

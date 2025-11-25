@@ -1,4 +1,4 @@
-const Apify = require('apify');
+const { Actor } = require('apify');
 const got = require('got');
 const cheerio = require('cheerio');
 
@@ -21,8 +21,8 @@ async function fetchPage(url, useProxy = false) {
 
     // Configure proxy if enabled
     if (useProxy) {
-      const proxyConfiguration = await Apify.createProxyConfiguration();
-      const proxyUrl = proxyConfiguration.newUrl();
+      const proxyConfiguration = await Actor.createProxyConfiguration();
+      const proxyUrl = await proxyConfiguration.newUrl();
       options.proxyUrl = proxyUrl;
       console.log('Using Apify proxy for request');
     }
@@ -589,12 +589,12 @@ async function scrapeProperties(url, maxItems, maxPages = 1, distressKeywords = 
  * Main actor entry point
  */
 async function main() {
-  await Apify.init();
+  await Actor.init();
 
   try {
     // Read input
     console.log('Reading actor input...');
-    const rawInput = await Apify.getInput();
+    const rawInput = await Actor.getInput();
     
     // Validate input
     console.log('Validating input...');
@@ -617,7 +617,7 @@ async function main() {
     
     // Push results to Apify dataset
     console.log('Saving results to dataset...');
-    await Apify.pushData(result.properties);
+    await Actor.pushData(result.properties);
     
     // Log final summary
     console.log('=== Scraping Summary ===');
@@ -626,7 +626,7 @@ async function main() {
     console.log(`Items with distress signals: ${result.properties.filter(p => p.distressScoreRule > 0).length}`);
     console.log('========================');
     
-    await Apify.exit();
+    await Actor.exit();
   } catch (error) {
     console.error('=== Actor Failed ===');
     console.error(`Error: ${error.message}`);
