@@ -75,9 +75,14 @@ function parseHTML(html) {
       '[data-test="property-card"]',
       '.l-searchResult',
       '.propertyCard-wrapper',
-      '[class*="propertyCard"]',
+      'div.propertyCard',
+      'article.propertyCard',
+      'div[class^="propertyCard"]',
+      'article[class^="propertyCard"]',
       '[class*="SearchResult"]',
-      'div[id^="property-"]'
+      'div[id^="property-"]',
+      '.searchResult',
+      'div.l-searchResult'
     ];
     
     let propertyCards = null;
