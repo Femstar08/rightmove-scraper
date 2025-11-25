@@ -94,6 +94,14 @@ function parseHTML(html) {
       const elements = $(selector);
       console.log(`  Selector "${selector}": ${elements.length} elements`);
       if (elements.length > 0) {
+        // Log the first few class names to help debug
+        if (elements.length > 0 && elements.length < 100) {
+          const firstClasses = [];
+          elements.slice(0, 3).each((i, el) => {
+            firstClasses.push($(el).attr('class'));
+          });
+          console.log(`    First element classes: ${firstClasses.join(' | ')}`);
+        }
         propertyCards = elements;
         usedSelector = selector;
         break;
