@@ -1,0 +1,63 @@
+{
+  "actorSpecification": 1,
+  "name": "rightmove-scraper",
+  "title": "Rightmove Property Scraper with Distress Detection",
+  "description": "Scrapes property listings from Rightmove search results with built-in distress keyword detection for identifying investment opportunities",
+  "version": "1.0",
+  "buildTag": "latest",
+  "dockerfile": "./Dockerfile",
+  "input": {
+    "title": "Rightmove Scraper Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+      "url": {
+        "title": "Rightmove Search URL",
+        "type": "string",
+        "description": "The URL of the Rightmove search results page to scrape",
+        "editor": "textfield",
+        "example": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+      },
+      "maxItems": {
+        "title": "Maximum Items",
+        "type": "integer",
+        "description": "Maximum number of property listings to extract across all pages",
+        "default": 50,
+        "minimum": 1,
+        "maximum": 1000
+      },
+      "maxPages": {
+        "title": "Maximum Pages",
+        "type": "integer",
+        "description": "Maximum number of search result pages to process",
+        "default": 1,
+        "minimum": 1,
+        "maximum": 50
+      },
+      "useProxy": {
+        "title": "Use Proxy",
+        "type": "boolean",
+        "description": "Enable Apify proxy to avoid rate limiting and IP blocks",
+        "default": false
+      },
+      "distressKeywords": {
+        "title": "Distress Keywords",
+        "type": "array",
+        "description": "Keywords to detect in property descriptions that indicate potential distressed sales",
+        "editor": "stringList",
+        "default": [
+          "reduced",
+          "chain free",
+          "auction",
+          "motivated",
+          "cash buyers",
+          "needs renovation"
+        ],
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["url"]
+  }
+}

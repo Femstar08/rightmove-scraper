@@ -1,0 +1,25 @@
+{
+  "name": "rightmove-scraper",
+  "version": "1.0.0",
+  "description": "Apify Actor for scraping property listings from Rightmove",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "apify": "^3.0.0",
+    "cheerio": "^1.0.0-rc.12",
+    "got": "^12.6.1"
+  },
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "fast-check": "^3.0.0",
+    "nock": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
