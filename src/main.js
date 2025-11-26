@@ -726,32 +726,36 @@ async function extractFromDOM(page, distressKeywords = []) {
  */
 function validateInput(input) {
   if (!input) {
-    throw new Error('Input validation failed: No input provided. Please provide an input object with a "listUrls" field.');
+    throw new Error('Input validation failed: No input provided. Please provide an input object with a "startUrls" or "listUrls" field.');
   }
   
-  // Check if listUrls is provided (required field)
-  if (!input.listUrls) {
-    throw new Error('Input validation failed: "listUrls" field is required. Please provide an array of URL objects.');
+  // Support both startUrls (Apify standard) and listUrls (backward compatibility)
+  const urls = input.startUrls || input.listUrls;
+  const fieldName = input.startUrls ? 'startUrls' : 'listUrls';
+  
+  // Check if URLs are provided (required field)
+  if (!urls) {
+    throw new Error(`Input validation failed: "${fieldName}" field is required. Please provide an array of URL objects.`);
   }
   
-  // Validate listUrls is an array
-  if (!Array.isArray(input.listUrls)) {
-    throw new Error(`Input validation failed: "listUrls" must be an array, but received type: ${typeof input.listUrls}`);
+  // Validate URLs is an array
+  if (!Array.isArray(urls)) {
+    throw new Error(`Input validation failed: "${fieldName}" must be an array, but received type: ${typeof urls}`);
   }
   
-  // Validate listUrls is not empty
-  if (input.listUrls.length === 0) {
-    throw new Error('Input validation failed: "listUrls" array cannot be empty. Please provide at least one URL object.');
+  // Validate URLs is not empty
+  if (urls.length === 0) {
+    throw new Error(`Input validation failed: "${fieldName}" array cannot be empty. Please provide at least one URL object.`);
   }
   
   // Validate each URL object in the array
-  input.listUrls.forEach((urlObj, index) => {
+  urls.forEach((urlObj, index) => {
     if (!urlObj || typeof urlObj !== 'object') {
-      throw new Error(`Input validation failed: listUrls[${index}] must be an object with a "url" property.`);
+      throw new Error(`Input validation failed: ${fieldName}[${index}] must be an object with a "url" property.`);
     }
     
     if (!urlObj.url || typeof urlObj.url !== 'string' || urlObj.url.trim() === '') {
-      throw new Error(`Input validation failed: listUrls[${index}].url must be a non-empty string.`);
+      throw new Error(`Input validation failed: ${fieldName}[${index}].url must be a non-empty string.`);
     }
   });
   
@@ -800,8 +804,9 @@ function validateInput(input) {
  * @returns {Object} Processed input with defaults applied
  */
 function processInput(input) {
-  // Extract URLs from listUrls array of objects
-  const urls = input.listUrls.map(urlObj => urlObj.url);
+  // Extract URLs from startUrls or listUrls array of objects (support both)
+  const urlArray = input.startUrls || input.listUrls;
+  const urls = urlArray.map(urlObj => urlObj.url);
   
   // Apply default value for maxItems (default: 200)
   const maxItems = input.maxItems !== undefined && typeof input.maxItems === 'number' && input.maxItems > 0

@@ -16,28 +16,16 @@
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-      "listUrls": {
-        "title": "Search URLs",
+      "startUrls": {
+        "title": "Start URLs",
         "type": "array",
-        "description": "Array of Rightmove search result URLs to scrape",
+        "description": "One or more Rightmove search result URLs to scrape",
         "editor": "requestListSources",
-        "example": [
+        "prefill": [
           {
             "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
           }
-        ],
-        "items": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "title": "URL",
-              "type": "string",
-              "description": "Rightmove search results page URL",
-              "editor": "textfield"
-            }
-          },
-          "required": ["url"]
-        }
+        ]
       },
       "maxItems": {
         "title": "Maximum Items",
@@ -100,6 +88,6 @@
         }
       }
     },
-    "required": ["listUrls"]
+    "required": ["startUrls"]
   }
 }
