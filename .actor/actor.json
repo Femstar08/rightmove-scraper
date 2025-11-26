@@ -43,32 +43,11 @@
         "minimum": 1,
         "maximum": 100
       },
-      "proxy": {
-        "title": "Proxy Configuration",
+      "proxyConfiguration": {
+        "title": "Proxy configuration",
         "type": "object",
-        "description": "Proxy settings for the scraper",
-        "editor": "proxy",
-        "default": {
-          "useApifyProxy": false
-        },
-        "properties": {
-          "useApifyProxy": {
-            "title": "Use Apify Proxy",
-            "type": "boolean",
-            "description": "Enable Apify proxy to avoid rate limiting and IP blocks",
-            "default": false
-          },
-          "apifyProxyGroups": {
-            "title": "Apify Proxy Groups",
-            "type": "array",
-            "description": "Apify proxy groups to use (e.g., RESIDENTIAL)",
-            "editor": "stringList",
-            "items": {
-              "type": "string"
-            },
-            "default": []
-          }
-        }
+        "description": "Proxy servers will be used to prevent detection and bypass restrictions",
+        "editor": "proxy"
       },
       "distressKeywords": {
         "title": "Distress Keywords",

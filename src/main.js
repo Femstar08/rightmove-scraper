@@ -773,14 +773,15 @@ function validateInput(input) {
     }
   }
   
-  // Validate proxy if provided (optional object)
-  if (input.proxy !== undefined) {
-    if (!input.proxy || typeof input.proxy !== 'object' || Array.isArray(input.proxy)) {
-      throw new Error(`Input validation failed: "proxy" must be an object, but received type: ${typeof input.proxy}`);
+  // Validate proxy/proxyConfiguration if provided (optional object)
+  const proxyConfig = input.proxyConfiguration || input.proxy;
+  if (proxyConfig !== undefined) {
+    if (!proxyConfig || typeof proxyConfig !== 'object' || Array.isArray(proxyConfig)) {
+      throw new Error(`Input validation failed: "proxyConfiguration" must be an object, but received type: ${typeof proxyConfig}`);
     }
     
-    if (input.proxy.useApifyProxy !== undefined && typeof input.proxy.useApifyProxy !== 'boolean') {
-      throw new Error(`Input validation failed: "proxy.useApifyProxy" must be a boolean, but received type: ${typeof input.proxy.useApifyProxy}`);
+    if (proxyConfig.useApifyProxy !== undefined && typeof proxyConfig.useApifyProxy !== 'boolean') {
+      throw new Error(`Input validation failed: "proxyConfiguration.useApifyProxy" must be a boolean, but received type: ${typeof proxyConfig.useApifyProxy}`);
     }
   }
   
@@ -819,9 +820,11 @@ function processInput(input) {
     : 5;
 
   // Process proxy configuration object (default: useApifyProxy = false)
+  // Support both proxyConfiguration (Apify standard) and proxy (backward compatibility)
+  const proxyConfig = input.proxyConfiguration || input.proxy || {};
   const proxy = {
-    useApifyProxy: input.proxy?.useApifyProxy === true,
-    apifyProxyGroups: input.proxy?.apifyProxyGroups || []
+    useApifyProxy: proxyConfig.useApifyProxy === true,
+    apifyProxyGroups: proxyConfig.apifyProxyGroups || []
   };
 
   // Apply default value for distressKeywords
@@ -1001,9 +1004,10 @@ async function main() {
     input.urls.forEach((url, i) => console.log(`  ${i + 1}. ${url}`));
     console.log(`Max items per URL: ${input.maxItems}`);
     console.log(`Max pages per URL: ${input.maxPages}`);
-    console.log(`Use Apify proxy: ${input.proxy.useApifyProxy}`);
-    if (input.proxy.apifyProxyGroups.length > 0) {
-      console.log(`Proxy groups: [${input.proxy.apifyProxyGroups.join(', ')}]`);
+    const proxyConfig = input.proxyConfiguration || input.proxy || {};
+    console.log(`Use Apify proxy: ${proxyConfig.useApifyProxy || false}`);
+    if (proxyConfig.apifyProxyGroups && proxyConfig.apifyProxyGroups.length > 0) {
+      console.log(`Proxy groups: [${proxyConfig.apifyProxyGroups.join(', ')}]`);
     }
     console.log(`Distress keywords: [${input.distressKeywords.join(', ')}]`);
     console.log('===========================');
@@ -1017,7 +1021,8 @@ async function main() {
       console.log(`\n=== Processing URL ${i + 1}/${input.urls.length} ===`);
       console.log(`URL: ${url}`);
       
-      const result = await scrapeProperties(url, input.maxItems, input.maxPages, input.distressKeywords, input.proxy);
+      const proxyConfig = input.proxyConfiguration || input.proxy || { useApifyProxy: false, apifyProxyGroups: [] };
+      const result = await scrapeProperties(url, input.maxItems, input.maxPages, input.distressKeywords, proxyConfig);
       
       allProperties.push(...result.properties);
       totalPagesProcessed += result.pagesProcessed;
