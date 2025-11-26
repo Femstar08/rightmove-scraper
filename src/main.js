@@ -1,6 +1,12 @@
 const { Actor } = require('apify');
 const { PlaywrightCrawler } = require('crawlee');
 const cheerio = require('cheerio');
+const {
+  extractPageModelAdaptive,
+  findPropertyDataRecursive,
+  discoverPropertyCardSelector,
+  calculateConfidence
+} = require('./adaptive-extraction');
 
 /**
  * Creates and configures a PlaywrightCrawler instance
@@ -103,28 +109,28 @@ async function createCrawler(config) {
  */
 async function extractPageModel(page) {
   try {
-    console.log('Attempting to extract window.PAGE_MODEL or __NEXT_DATA__ from page...');
+    console.log('Attempting to extract JavaScript data from page (adaptive mode)...');
     
-    const pageModel = await page.evaluate(() => {
-      // Try multiple possible JavaScript data objects
-      if (typeof window.PAGE_MODEL !== 'undefined') {
-        return { source: 'PAGE_MODEL', data: window.PAGE_MODEL };
-      }
-      if (typeof window.__NEXT_DATA__ !== 'undefined') {
-        return { source: '__NEXT_DATA__', data: window.__NEXT_DATA__ };
-      }
-      return null;
-    });
+    // Use adaptive extraction that tries multiple locations
+    const jsData = await extractPageModelAdaptive(page);
     
-    if (pageModel) {
-      console.log(`✓ Successfully extracted JavaScript data object from ${pageModel.source}`);
-      return pageModel.data;
-    } else {
-      console.log('✗ No JavaScript data object found (window.PAGE_MODEL or __NEXT_DATA__)');
-      return null;
+    if (jsData) {
+      // Try to find property data recursively
+      const propertyData = findPropertyDataRecursive(jsData);
+      if (propertyData) {
+        console.log(`✓ Found property data with ${propertyData.length} properties`);
+        // Wrap in expected format
+        return { propertyData };
+      }
+      
+      // Return raw data if no property array found (will be handled by extractFromPageModel)
+      return jsData;
     }
+    
+    console.log('✗ No JavaScript data found');
+    return null;
   } catch (error) {
-    console.warn(`Error extracting PAGE_MODEL: ${error.message}`);
+    console.warn(`Error extracting JavaScript data: ${error.message}`);
     return null;
   }
 }
@@ -138,36 +144,39 @@ async function extractPageModel(page) {
  */
 function extractFromPageModel(pageModel, distressKeywords = []) {
   try {
-    console.log('Parsing propertyData from PAGE_MODEL...');
+    console.log('Parsing propertyData from PAGE_MODEL (adaptive mode)...');
     
     if (!pageModel) {
       console.log('No PAGE_MODEL provided');
       return [];
     }
     
-    // Try to find propertyData in various possible locations
-    let propertyData = null;
+    // ADAPTIVE: Use recursive discovery to find property data
+    let propertyData = findPropertyDataRecursive(pageModel);
     
-    // Check common locations for property data
-    if (pageModel.propertyData) {
-      propertyData = pageModel.propertyData;
-    } else if (pageModel.properties) {
-      propertyData = pageModel.properties;
-    } else if (pageModel.results) {
-      propertyData = pageModel.results;
-    } else if (pageModel.props?.pageProps?.properties) {
-      propertyData = pageModel.props.pageProps.properties;
+    // Fallback to manual checks if recursive search fails
+    if (!propertyData) {
+      console.log('Recursive search failed, trying manual locations...');
+      if (pageModel.propertyData) {
+        propertyData = pageModel.propertyData;
+      } else if (pageModel.properties) {
+        propertyData = pageModel.properties;
+      } else if (pageModel.results) {
+        propertyData = pageModel.results;
+      } else if (pageModel.props?.pageProps?.properties) {
+        propertyData = pageModel.props.pageProps.properties;
+      }
     }
     
     if (!propertyData) {
-      console.log('No propertyData found in PAGE_MODEL');
+      console.log('✗ No propertyData found in PAGE_MODEL');
       return [];
     }
     
     // Handle both single property and array of properties
     const properties = Array.isArray(propertyData) ? propertyData : [propertyData];
     
-    console.log(`Found ${properties.length} property/properties in JavaScript data`);
+    console.log(`✓ Found ${properties.length} property/properties in JavaScript data`);
     
     // Extract each property
     const extractedProperties = properties.map(prop => {
@@ -688,17 +697,40 @@ function extractProperty($, element, distressKeywords = []) {
  */
 async function extractFromDOM(page, distressKeywords = []) {
   try {
-    console.log('Extracting property data from DOM...');
+    console.log('Extracting property data from DOM (adaptive mode)...');
+    
+    // ADAPTIVE: Try to discover the selector dynamically
+    const discoveredSelector = await discoverPropertyCardSelector(page);
     
     // Get page HTML content
     const html = await page.content();
+    const $ = cheerio.load(html);
     
-    // Parse HTML and get property cards
-    const { $, propertyCards, count } = parseHTML(html);
+    let propertyCards = null;
+    let count = 0;
+    
+    // Try discovered selector first
+    if (discoveredSelector) {
+      console.log(`Trying discovered selector: ${discoveredSelector}`);
+      propertyCards = $(discoveredSelector);
+      count = propertyCards.length;
+      
+      if (count > 0) {
+        console.log(`✓ Discovered selector found ${count} elements`);
+      }
+    }
+    
+    // Fallback to parseHTML if discovery failed
+    if (count === 0) {
+      console.log('Falling back to predefined selectors...');
+      const result = parseHTML(html);
+      propertyCards = result.propertyCards;
+      count = result.count;
+    }
     
     // Handle case where no property cards are found
     if (count === 0) {
-      console.log('No property cards found in DOM');
+      console.log('✗ No property cards found in DOM');
       return [];
     }
     
@@ -711,7 +743,15 @@ async function extractFromDOM(page, distressKeywords = []) {
       properties.push(property);
     });
     
-    console.log(`✓ DOM extraction successful: ${properties.length} properties extracted`);
+    // Calculate confidence
+    const confidence = calculateConfidence(properties);
+    console.log(`✓ DOM extraction successful: ${properties.length} properties (confidence: ${confidence}%)`);
+    
+    // Only return if confidence is acceptable
+    if (confidence < 30) {
+      console.warn(`⚠️ Low confidence (${confidence}%), data may be incomplete`);
+    }
+    
     return properties;
   } catch (error) {
     console.warn(`Error during DOM extraction: ${error.message}`);
@@ -912,23 +952,26 @@ async function scrapeProperties(url, maxItems, maxPages = 1, distressKeywords = 
       // Extract properties from this page
       let pageProperties = [];
       
-      // PRIMARY METHOD: Try to extract from JavaScript data (window.PAGE_MODEL)
-      console.log('Attempting JavaScript data extraction...');
+      // PRIMARY METHOD: Try to extract from JavaScript data (adaptive)
+      console.log('Attempting JavaScript data extraction (adaptive mode)...');
       const pageModel = await extractPageModel(page);
       
       if (pageModel) {
         pageProperties = extractFromPageModel(pageModel, distressKeywords);
-        console.log(`✓ JavaScript extraction successful: ${pageProperties.length} properties found`);
+        if (pageProperties.length > 0) {
+          const jsConfidence = calculateConfidence(pageProperties);
+          console.log(`✓ JavaScript extraction successful: ${pageProperties.length} properties (confidence: ${jsConfidence}%)`);
+        }
       }
       
       // FALLBACK METHOD: If JavaScript extraction fails or returns no data, fall back to DOM parsing
       if (pageProperties.length === 0) {
-        console.log('JavaScript extraction yielded no results, falling back to DOM parsing...');
+        console.log('JavaScript extraction yielded no results, falling back to DOM parsing (adaptive mode)...');
         pageProperties = await extractFromDOM(page, distressKeywords);
         
         // Stop early if no properties found on this page
         if (pageProperties.length === 0) {
-          console.log(`No properties found on this page, stopping pagination`);
+          console.log(`✗ No properties found on this page, stopping pagination`);
           return;
         }
       }
