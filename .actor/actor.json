@@ -30,8 +30,10 @@
           "type": "object",
           "properties": {
             "url": {
+              "title": "URL",
               "type": "string",
-              "description": "Rightmove search results page URL"
+              "description": "Rightmove search results page URL",
+              "editor": "textfield"
             }
           },
           "required": ["url"]
@@ -63,13 +65,16 @@
         },
         "properties": {
           "useApifyProxy": {
+            "title": "Use Apify Proxy",
             "type": "boolean",
             "description": "Enable Apify proxy to avoid rate limiting and IP blocks",
             "default": false
           },
           "apifyProxyGroups": {
+            "title": "Apify Proxy Groups",
             "type": "array",
             "description": "Apify proxy groups to use (e.g., RESIDENTIAL)",
+            "editor": "stringList",
             "items": {
               "type": "string"
             },
