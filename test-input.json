@@ -1,0 +1,20 @@
+{
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?searchLocation=Manchester%2C+Greater+Manchester&useLocationIdentifier=true&locationIdentifier=REGION%5E904&radius=0.0&maxPrice=300000&maxBedrooms=3&_includeSSTC=on&propertyTypes=semi-detached&sortType=2&channel=BUY&transactionType=BUY&displayLocationIdentifier=Manchester&dontShow=sharedOwnership%2Cretirement"
+    }
+  ],
+  "maxItems": 10,
+  "maxPages": 1,
+  "proxy": {
+    "useApifyProxy": false
+  },
+  "distressKeywords": [
+    "reduced",
+    "chain free",
+    "auction",
+    "motivated",
+    "cash buyers",
+    "needs renovation"
+  ]
+}

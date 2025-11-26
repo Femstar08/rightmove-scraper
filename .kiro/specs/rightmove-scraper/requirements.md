@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This document specifies the requirements for a Rightmove Property Scraper Actor that conforms to the Apify Actor Specification 1 (2025). The Actor shall fetch property listings from Rightmove search result pages and extract structured data including property details, pricing, and images.
+This document specifies the requirements for a Rightmove Property Scraper Actor that conforms to the Apify Actor Specification 1 (2025). The Actor shall fetch property listings from Rightmove search result pages using browser automation to handle JavaScript-rendered content, and extract structured data including property details, pricing, and images.
 
 ## Glossary
 
@@ -11,7 +11,11 @@ This document specifies the requirements for a Rightmove Property Scraper Actor 
 - **Input Schema**: JSON Schema definition that validates actor input parameters
 - **Property Card**: An HTML element on Rightmove containing information about a single property listing
 - **Rightmove**: A UK property portal website (rightmove.co.uk)
-- **Cheerio**: A fast, flexible HTML parsing library for Node.js
+- **Crawlee**: Modern web scraping framework that supports both HTTP and browser-based crawling
+- **Playwright**: Browser automation library for rendering JavaScript-heavy websites
+- **SPA**: Single Page Application - websites that load content dynamically with JavaScript
+- **Property Data Module**: JavaScript object embedded in the page containing structured property data
+- **Browser Context**: Isolated browser session for scraping
 - **Apify SDK**: The official Apify software development kit for building actors
 - **Distress Keywords**: Specific words or phrases in property descriptions that indicate potential distressed sale opportunities
 - **Distress Score**: A numerical value (0-10) representing the likelihood that a property is a distressed sale based on keyword matches
@@ -26,17 +30,17 @@ This document specifies the requirements for a Rightmove Property Scraper Actor 
 
 #### Acceptance Criteria
 
-1. WHEN the actor starts, THE Actor SHALL read the url field from the input
-2. WHEN the actor starts, THE Actor SHALL read the maxItems field from the input with a default value of 50
-3. WHEN the actor starts, THE Actor SHALL read the maxPages field from the input with a default value of 1
-4. WHEN the actor starts, THE Actor SHALL read the useProxy field from the input with a default value of false
+1. THE Actor SHALL accept `listUrls` array with URL objects containing search URLs
+2. WHEN the actor starts, THE Actor SHALL read the maxItems field from the input with a default value of 200
+3. WHEN the actor starts, THE Actor SHALL read the maxPages field from the input with a default value of 5
+4. THE Actor SHALL accept `proxy` configuration object with `useApifyProxy` boolean field
 5. WHEN the actor starts, THE Actor SHALL read the distressKeywords field from the input with a default array containing common distress indicators
-6. WHEN the url field is missing or empty, THE Actor SHALL terminate with a clear error message
-7. WHEN the maxItems field is not provided, THE Actor SHALL use 50 as the default value
-8. WHEN the maxPages field is not provided, THE Actor SHALL use 1 as the default value
-9. WHEN the useProxy field is not provided, THE Actor SHALL use false as the default value
+6. WHEN the listUrls field is missing or empty, THE Actor SHALL terminate with a clear error message
+7. WHEN the maxItems field is not provided, THE Actor SHALL use 200 as the default value
+8. WHEN the maxPages field is not provided, THE Actor SHALL use 5 as the default value
+9. WHEN the proxy.useApifyProxy field is not provided, THE Actor SHALL use false as the default value
 10. WHEN the distressKeywords field is not provided, THE Actor SHALL use a default array containing ["reduced", "chain free", "auction", "motivated", "cash buyers", "needs renovation"]
-11. WHERE the input schema is defined, THE Actor SHALL validate that url is a required string field, maxItems is an optional integer field, maxPages is an optional integer field, useProxy is an optional boolean field, and distressKeywords is an optional array of strings
+11. WHERE the input schema is defined, THE Actor SHALL validate that listUrls is a required array field, maxItems is an optional integer field, maxPages is an optional integer field, proxy is an optional object field, and distressKeywords is an optional array of strings
 
 ### Requirement 2
 
@@ -53,18 +57,18 @@ This document specifies the requirements for a Rightmove Property Scraper Actor 
 
 ### Requirement 3
 
-**User Story:** As an Apify user, I want the actor to fetch and parse Rightmove search results with pagination support, so that I can extract property listing data from multiple pages programmatically.
+**User Story:** As an Apify user, I want the actor to use browser automation to handle JavaScript-rendered pages, so that I can extract property listing data reliably from modern Rightmove pages.
 
 #### Acceptance Criteria
 
-1. WHEN the actor receives a valid Rightmove URL, THE Actor SHALL fetch the HTML content of that page
-2. WHEN useProxy is set to true, THE Actor SHALL use Apify proxy configuration for all HTTP requests
-3. WHEN useProxy is set to false, THE Actor SHALL make direct HTTP requests without proxy
-4. WHEN the HTML content is retrieved, THE Actor SHALL parse it using Cheerio
-5. WHEN parsing the page, THE Actor SHALL identify all property card elements
-6. WHEN property cards are found and maxPages is greater than 1, THE Actor SHALL process additional pages up to the maxPages limit
-7. WHEN processing multiple pages, THE Actor SHALL aggregate property cards from all pages until maxItems is reached
-8. WHEN property cards are found, THE Actor SHALL extract data from up to maxItems cards across all pages
+1. THE Actor SHALL use Crawlee framework version 3.x or higher
+2. THE Actor SHALL use PlaywrightCrawler for browser-based scraping
+3. WHEN the actor starts, THE Actor SHALL initialize a Playwright browser context
+4. WHEN processing pages, THE Actor SHALL wait for JavaScript content to load
+5. WHEN a property listing page loads, THE Actor SHALL locate the `window.PAGE_MODEL` or similar JavaScript data object
+6. WHEN property data is found in JavaScript objects, THE Actor SHALL parse the JSON structure
+7. WHEN JavaScript data is unavailable, THE Actor SHALL fall back to DOM parsing
+8. WHEN proxy.useApifyProxy is set to true, THE Actor SHALL use Apify proxy configuration for all browser requests
 9. WHEN network errors occur during fetching, THE Actor SHALL handle them gracefully and log appropriate error messages
 10. WHEN processing each page, THE Actor SHALL log the current page number and items found
 
@@ -106,14 +110,15 @@ This document specifies the requirements for a Rightmove Property Scraper Actor 
 
 1. THE Actor SHALL include a package.json file with a valid name and version
 2. THE Actor SHALL declare apify as a dependency in package.json
-3. THE Actor SHALL declare cheerio as a dependency in package.json
-4. THE Actor SHALL declare got version 12 as a dependency in package.json
+3. THE Actor SHALL declare crawlee version 3.x as a dependency in package.json
+4. THE Actor SHALL declare playwright as a dependency in package.json
 5. THE Actor SHALL define a start script in package.json that executes "node src/main.js"
 6. THE Actor SHALL organize the main scraping logic in a src/main.js file
-7. WHEN the actor starts, THE Actor SHALL log the input URL and configuration parameters
+7. WHEN the actor starts, THE Actor SHALL log the input URLs and configuration parameters
 8. WHEN processing each page, THE Actor SHALL log the page number and URL being fetched
 9. WHEN extraction completes, THE Actor SHALL log summary statistics including total pages processed and items extracted
 10. WHEN errors occur, THE Actor SHALL log clear error messages with context to aid debugging
+11. THE Actor SHALL continue processing remaining URLs after individual failures
 
 ### Requirement 7
 
@@ -126,3 +131,115 @@ This document specifies the requirements for a Rightmove Property Scraper Actor 
 3. WHEN viewing the README, THE Actor SHALL include example input JSON with all available parameters
 4. WHEN viewing the README, THE Actor SHALL include example output JSON showing the complete property object structure
 5. WHEN viewing the README, THE Actor SHALL document all input parameters with their types, defaults, and purposes
+
+### Requirement 8
+
+**User Story:** As a user, I want the scraper to handle Rightmove's anti-bot measures, so that scraping remains reliable over time.
+
+#### Acceptance Criteria
+
+1. WHEN making requests, THE Actor SHALL use realistic browser fingerprints
+2. THE Actor SHALL rotate user agents automatically
+3. WHEN using proxy, THE Actor SHALL configure Apify proxy with appropriate settings
+4. THE Actor SHALL implement random delays between requests
+5. THE Actor SHALL handle rate limiting gracefully with exponential backoff
+
+### Requirement 9
+
+**User Story:** As a user, I want to scrape multiple search URLs with pagination, so that I can collect comprehensive property data.
+
+#### Acceptance Criteria
+
+1. WHEN provided with search URLs in listUrls array, THE Actor SHALL process each URL sequentially
+2. WHEN on a search results page, THE Actor SHALL detect and follow pagination links
+3. THE Actor SHALL respect maxPages limit per search URL
+4. THE Actor SHALL aggregate results across all pages and URLs
+5. WHEN pagination ends, THE Actor SHALL move to the next search URL
+6. THE Actor SHALL enforce maxItems limit across all URLs combined
+
+---
+
+# PHASE 2: Enhanced Commercial Features
+
+## Introduction to Phase 2
+
+Phase 2 extends the base scraper with advanced commercial features including full property details (30+ fields), monitoring mode, delisting tracker, price history, and support for direct property URLs. These features should be implemented AFTER Phase 1 (basic browser-based scraper) is complete and working.
+
+## Phase 2 Requirements
+
+### Requirement 10: Enhanced Input Configuration
+
+**User Story:** As an Apify user, I want to provide either search URLs or direct property URLs, and control whether to fetch full details, enable monitoring, and track delistings.
+
+#### Acceptance Criteria
+
+1. WHEN the actor starts, THE Actor SHALL accept propertyUrls array containing direct property page URLs
+2. WHEN the actor starts, THE Actor SHALL accept fullPropertyDetails field with default value true
+3. WHEN the actor starts, THE Actor SHALL accept monitoringMode field with default value false
+4. WHEN the actor starts, THE Actor SHALL accept enableDelistingTracker field with default value false
+5. WHEN the actor starts, THE Actor SHALL accept addEmptyTrackerRecord field with default value false
+6. WHEN the actor starts, THE Actor SHALL accept includePriceHistory field with default value false
+7. WHERE fullPropertyDetails is true, THE Actor SHALL visit each property detail page to extract comprehensive data
+8. WHERE fullPropertyDetails is false, THE Actor SHALL only extract data from search result cards
+
+### Requirement 11: Full Property Detail Extraction
+
+**User Story:** As a property investor, I want comprehensive property data including coordinates, agent details, amenities, and documents, so I can make informed investment decisions.
+
+#### Acceptance Criteria
+
+1. WHEN extracting full property details, THE Actor SHALL extract 30+ comprehensive fields
+2. WHEN extracting full property details, THE Actor SHALL extract coordinates (latitude, longitude)
+3. WHEN extracting full property details, THE Actor SHALL extract agent information (name, phone, logo, address, URLs)
+4. WHEN extracting full property details, THE Actor SHALL extract all images, brochures, and floor plans
+5. WHEN extracting full property details, THE Actor SHALL extract features/amenities array
+6. WHEN extracting full property details, THE Actor SHALL extract nearest stations with distance
+7. WHEN extracting full property details, THE Actor SHALL extract property status and dates
+8. WHEN any field is not available, THE Actor SHALL set it to null rather than omitting it
+
+### Requirement 12: Monitoring Mode
+
+**User Story:** As a property investor running daily scrapes, I want to only receive newly added properties compared to my previous scrapes, so I don't process duplicates.
+
+#### Acceptance Criteria
+
+1. WHEN monitoringMode is enabled, THE Actor SHALL load the previous run's dataset
+2. WHEN monitoringMode is enabled, THE Actor SHALL extract property IDs from the previous dataset
+3. WHEN monitoringMode is enabled, THE Actor SHALL only include properties whose IDs were not in the previous dataset
+4. WHEN monitoringMode is enabled and no previous run exists, THE Actor SHALL process all properties as new
+5. WHEN monitoringMode is disabled, THE Actor SHALL return all scraped properties regardless of previous runs
+
+### Requirement 13: Delisting Tracker
+
+**User Story:** As a property investor, I want to track when properties are removed from Rightmove, so I can identify properties that sold or were withdrawn.
+
+#### Acceptance Criteria
+
+1. WHEN enableDelistingTracker is true, THE Actor SHALL use a Key-Value store named "rightmove-properties"
+2. WHEN enableDelistingTracker is true, THE Actor SHALL store each property ID with lastSeen timestamp
+3. WHEN enableDelistingTracker is true, THE Actor SHALL update the lastSeen timestamp for each property found
+4. WHEN a property exists in Key-Value store but not in current scrape, THE property is considered delisted
+5. WHERE Key-Value store is used, THE Actor SHALL handle store creation if it doesn't exist
+
+### Requirement 14: Price History Extraction
+
+**User Story:** As a property investor, I want to see historical price changes for properties, so I can identify price reductions and motivated sellers.
+
+#### Acceptance Criteria
+
+1. WHEN includePriceHistory is true, THE Actor SHALL extract price history from property detail pages
+2. WHEN includePriceHistory is true, THE Actor SHALL include priceHistory array in output
+3. WHEN includePriceHistory is false, THE Actor SHALL NOT extract price history to improve performance
+4. WHEN price history is not available for a property, THE Actor SHALL set priceHistory to empty array
+
+### Requirement 15: Direct Property URL Support
+
+**User Story:** As an Apify user, I want to provide direct property URLs to scrape specific properties without searching.
+
+#### Acceptance Criteria
+
+1. WHEN propertyUrls array is provided, THE Actor SHALL skip search result scraping
+2. WHEN propertyUrls array is provided, THE Actor SHALL directly fetch each property detail page
+3. WHEN propertyUrls array is provided, THE Actor SHALL extract full property details for each URL
+4. WHEN both listUrls and propertyUrls are provided, THE Actor SHALL process both
+5. WHEN processing propertyUrls, THE Actor SHALL handle invalid URLs gracefully

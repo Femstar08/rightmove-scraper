@@ -29,10 +29,10 @@ This Actor extracts structured property data from Rightmove search result pages,
 
 | Parameter          | Type    | Required | Default   | Description                                                                          |
 | ------------------ | ------- | -------- | --------- | ------------------------------------------------------------------------------------ |
-| `url`              | string  | ✅ Yes   | -         | The URL of the Rightmove search results page to scrape                               |
-| `maxItems`         | integer | No       | `50`      | Maximum number of property listings to extract across all pages (1-1000)             |
-| `maxPages`         | integer | No       | `1`       | Maximum number of search result pages to process (1-50)                              |
-| `useProxy`         | boolean | No       | `false`   | Enable Apify proxy to avoid rate limiting and IP blocks                              |
+| `listUrls`         | array   | ✅ Yes   | -         | Array of URL objects containing Rightmove search results pages to scrape             |
+| `maxItems`         | integer | No       | `200`     | Maximum number of property listings to extract across all pages (1-1000)             |
+| `maxPages`         | integer | No       | `5`       | Maximum number of search result pages to process per URL (1-50)                      |
+| `proxy`            | object  | No       | See below | Proxy configuration object with useApifyProxy boolean and optional apifyProxyGroups  |
 | `distressKeywords` | array   | No       | See below | Keywords to detect in property descriptions that indicate potential distressed sales |
 
 ### Default Distress Keywords
@@ -52,7 +52,11 @@ If not specified, the Actor uses these default keywords:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    }
+  ]
 }
 ```
 
@@ -60,10 +64,20 @@ If not specified, the Actor uses these default keywords:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490",
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    },
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E93929"
+    }
+  ],
   "maxItems": 100,
   "maxPages": 5,
-  "useProxy": true,
+  "proxy": {
+    "useApifyProxy": true,
+    "apifyProxyGroups": []
+  },
   "distressKeywords": [
     "reduced",
     "chain free",
@@ -74,7 +88,11 @@ If not specified, the Actor uses these default keywords:
     "probate",
     "executor sale",
     "quick sale",
-    "vacant possession"
+    "vacant possession",
+    "deceased estate",
+    "renovation project",
+    "modernisation required",
+    "refurbishment opportunity"
   ]
 }
 ```
@@ -85,7 +103,11 @@ If not specified, the Actor uses these default keywords:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490",
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    }
+  ],
   "distressKeywords": [
     "probate",
     "executor sale",
@@ -99,7 +121,11 @@ If not specified, the Actor uses these default keywords:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490",
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    }
+  ],
   "distressKeywords": [
     "needs work",
     "renovation project",
@@ -160,15 +186,19 @@ If not specified, the Actor uses these default keywords:
 
 ### Basic Scraping
 
-Scrape the first page of search results with default settings:
+Scrape the first 5 pages of search results with default settings:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    }
+  ]
 }
 ```
 
-This will extract up to 50 properties from the first page using default distress keywords.
+This will extract up to 200 properties from up to 5 pages using default distress keywords.
 
 ### Multi-Page Scraping
 
@@ -176,14 +206,47 @@ Scrape multiple pages to get more results:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490",
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    }
+  ],
   "maxItems": 200,
   "maxPages": 10,
-  "useProxy": true
+  "proxy": {
+    "useApifyProxy": true
+  }
 }
 ```
 
-**Note**: When scraping multiple pages, it's recommended to enable `useProxy: true` to avoid rate limiting.
+**Note**: When scraping multiple pages, it's recommended to enable `proxy.useApifyProxy: true` to avoid rate limiting.
+
+### Multiple Search URLs
+
+Scrape properties from multiple different search URLs:
+
+```json
+{
+  "listUrls": [
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+    },
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E93929"
+    },
+    {
+      "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E61294"
+    }
+  ],
+  "maxItems": 300,
+  "maxPages": 5,
+  "proxy": {
+    "useApifyProxy": true
+  }
+}
+```
+
+This will scrape up to 5 pages from each URL, collecting up to 300 properties total across all URLs.
 
 ### Finding High-Distress Properties
 
@@ -210,7 +273,9 @@ Use the scraped data with OpenAI to analyze property descriptions and generate i
 ```javascript
 // In your OpenAI Workflow
 const properties = await Apify.call("your-actor-name", {
-  url: "https://www.rightmove.co.uk/property-for-sale/find.html?...",
+  listUrls: [
+    { url: "https://www.rightmove.co.uk/property-for-sale/find.html?..." },
+  ],
   maxItems: 50,
 });
 
@@ -291,9 +356,13 @@ Get real-time notifications when the Actor completes:
 
 ```json
 {
-  "url": "https://www.rightmove.co.uk/property-for-sale/find.html?...",
+  "listUrls": [
+    { "url": "https://www.rightmove.co.uk/property-for-sale/find.html?..." }
+  ],
   "maxItems": 100,
-  "useProxy": true
+  "proxy": {
+    "useApifyProxy": true
+  }
 }
 ```
 
@@ -324,7 +393,7 @@ Your endpoint receives:
 
 ### When to Use Proxy
 
-✅ **Use Proxy (`useProxy: true`) when:**
+✅ **Use Proxy (`proxy.useApifyProxy: true`) when:**
 
 - Scraping more than 2 pages
 - Running frequent scheduled scrapes
@@ -372,7 +441,7 @@ Rightmove may update their website structure, which could affect scraping. If yo
 
 - **Check URL**: Ensure the Rightmove search URL is valid and returns results
 - **Check Logs**: Look for parsing errors in the Actor run logs
-- **Try Proxy**: Enable `useProxy: true` if you're being blocked
+- **Try Proxy**: Enable `proxy.useApifyProxy: true` if you're being blocked
 
 ### Missing Fields
 
@@ -382,8 +451,8 @@ Rightmove may update their website structure, which could affect scraping. If yo
 
 ### HTTP Errors
 
-- **429 Too Many Requests**: Enable `useProxy: true`
-- **403 Forbidden**: Enable `useProxy: true` or wait before retrying
+- **429 Too Many Requests**: Enable `proxy.useApifyProxy: true`
+- **403 Forbidden**: Enable `proxy.useApifyProxy: true` or wait before retrying
 - **404 Not Found**: Check that your search URL is correct
 
 ### Low Distress Scores

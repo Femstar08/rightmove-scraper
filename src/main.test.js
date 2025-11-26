@@ -180,9 +180,11 @@ describe('End-to-End Integration Tests', () => {
         </html>
       `;
 
-      // Mock input
+      // Mock input with listUrls format
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490'
+        listUrls: [
+          { url: 'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490' }
+        ]
       });
 
       // Mock HTTP response
@@ -264,7 +266,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test'
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }]
       });
 
       global.fetch.mockResolvedValue({
@@ -334,10 +336,12 @@ describe('End-to-End Integration Tests', () => {
 
       // Mock input with custom configuration
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=TEST',
+        listUrls: [
+          { url: 'https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=TEST' }
+        ],
         maxItems: 10,
         maxPages: 2,
-        useProxy: true,
+        proxy: { useApifyProxy: true },
         distressKeywords: ['urgent', 'probate', 'executor sale', 'quick completion']
       });
 
@@ -425,7 +429,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test',
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }],
         maxItems: 3,  // Only want 3 items
         maxPages: 5   // But allow up to 5 pages
       });
@@ -469,7 +473,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test',
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }],
         maxItems: 50,
         maxPages: 5
       });
@@ -506,7 +510,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test'
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }]
         // Using default distress keywords
       });
 
@@ -549,7 +553,7 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test'
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }]
       });
 
       global.fetch.mockResolvedValue({ ok: true,ok: true,status: 200, text: async () => mockHTML });
@@ -616,10 +620,10 @@ describe('End-to-End Integration Tests', () => {
       `;
 
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test',
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }],
         maxItems: 10,
         maxPages: 2,
-        useProxy: false,
+        proxy: { useApifyProxy: false },
         distressKeywords: ['reduced', 'auction']
       });
 
@@ -653,7 +657,7 @@ describe('End-to-End Integration Tests', () => {
   describe('Error handling', () => {
     test('should handle network errors gracefully', async () => {
       mockActor.getInput.mockResolvedValue({
-        url: 'https://www.rightmove.co.uk/test'
+        listUrls: [{ url: 'https://www.rightmove.co.uk/test' }]
       });
 
       global.fetch.mockRejectedValue(new Error('Network timeout'));
@@ -664,10 +668,10 @@ describe('End-to-End Integration Tests', () => {
       expect(mockActor.exit).not.toHaveBeenCalled();
     });
 
-    test('should validate input and reject missing URL', async () => {
+    test('should validate input and reject missing listUrls', async () => {
       mockActor.getInput.mockResolvedValue({
         maxItems: 50
-        // Missing url field
+        // Missing listUrls field
       });
 
       await expect(main()).rejects.toThrow('Input validation failed');
@@ -1015,58 +1019,96 @@ describe('Edge Case Unit Tests', () => {
       expect(() => validateInput(undefined)).toThrow('Input validation failed: No input provided');
     });
 
-    test('should throw error for input without url field', () => {
-      expect(() => validateInput({ maxItems: 50 })).toThrow('Input validation failed: Missing required "url" field');
+    test('should throw error for input without listUrls field', () => {
+      expect(() => validateInput({ maxItems: 50 })).toThrow('Input validation failed: "listUrls" field is required');
     });
 
-    test('should throw error for empty string url', () => {
-      expect(() => validateInput({ url: '' })).toThrow('Input validation failed');
+    test('should throw error for non-array listUrls', () => {
+      expect(() => validateInput({ listUrls: 'not an array' })).toThrow('Input validation failed: "listUrls" must be an array');
     });
 
-    test('should throw error for whitespace-only url', () => {
-      expect(() => validateInput({ url: '   ' })).toThrow('Input validation failed: "url" field cannot be empty');
+    test('should throw error for empty listUrls array', () => {
+      expect(() => validateInput({ listUrls: [] })).toThrow('Input validation failed: "listUrls" array cannot be empty');
     });
 
-    test('should throw error for non-string url', () => {
-      expect(() => validateInput({ url: 123 })).toThrow('Input validation failed: "url" field must be a string');
+    test('should throw error for listUrls with non-object elements', () => {
+      expect(() => validateInput({ listUrls: ['string'] })).toThrow('Input validation failed: listUrls[0] must be an object');
     });
 
-    test('should accept valid url', () => {
-      expect(() => validateInput({ url: 'https://www.rightmove.co.uk/test' })).not.toThrow();
+    test('should throw error for listUrls with missing url property', () => {
+      expect(() => validateInput({ listUrls: [{}] })).toThrow('Input validation failed: listUrls[0].url must be a non-empty string');
+    });
+
+    test('should throw error for listUrls with empty string url', () => {
+      expect(() => validateInput({ listUrls: [{ url: '' }] })).toThrow('Input validation failed: listUrls[0].url must be a non-empty string');
+    });
+
+    test('should throw error for listUrls with whitespace-only url', () => {
+      expect(() => validateInput({ listUrls: [{ url: '   ' }] })).toThrow('Input validation failed: listUrls[0].url must be a non-empty string');
+    });
+
+    test('should accept valid listUrls', () => {
+      expect(() => validateInput({ listUrls: [{ url: 'https://www.rightmove.co.uk/test' }] })).not.toThrow();
+    });
+
+    test('should validate maxItems is a positive integer', () => {
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], maxItems: -1 })).toThrow('Input validation failed: "maxItems" must be a positive integer');
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], maxItems: 0 })).toThrow('Input validation failed: "maxItems" must be a positive integer');
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], maxItems: 1.5 })).toThrow('Input validation failed: "maxItems" must be a positive integer');
+    });
+
+    test('should validate maxPages is a positive integer', () => {
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], maxPages: -1 })).toThrow('Input validation failed: "maxPages" must be a positive integer');
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], maxPages: 0 })).toThrow('Input validation failed: "maxPages" must be a positive integer');
+    });
+
+    test('should validate proxy is an object', () => {
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], proxy: 'not an object' })).toThrow('Input validation failed: "proxy" must be an object');
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], proxy: [] })).toThrow('Input validation failed: "proxy" must be an object');
+    });
+
+    test('should validate proxy.useApifyProxy is a boolean', () => {
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], proxy: { useApifyProxy: 'yes' } })).toThrow('Input validation failed: "proxy.useApifyProxy" must be a boolean');
+    });
+
+    test('should validate distressKeywords is an array of strings', () => {
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], distressKeywords: 'not an array' })).toThrow('Input validation failed: "distressKeywords" must be an array');
+      expect(() => validateInput({ listUrls: [{ url: 'https://test.com' }], distressKeywords: [123] })).toThrow('Input validation failed: distressKeywords[0] must be a string');
     });
   });
 
   describe('processInput default values', () => {
     test('should apply default maxItems when not provided', () => {
-      const input = { url: 'https://test.com' };
+      const input = { listUrls: [{ url: 'https://test.com' }] };
       const result = processInput(input);
       
-      expect(result.maxItems).toBe(50);
+      expect(result.maxItems).toBe(200);
     });
 
     test('should apply default maxItems when invalid', () => {
-      const input = { url: 'https://test.com', maxItems: -5 };
+      const input = { listUrls: [{ url: 'https://test.com' }], maxItems: -5 };
       const result = processInput(input);
       
-      expect(result.maxItems).toBe(50);
+      expect(result.maxItems).toBe(200);
     });
 
     test('should apply default maxPages when not provided', () => {
-      const input = { url: 'https://test.com' };
+      const input = { listUrls: [{ url: 'https://test.com' }] };
       const result = processInput(input);
       
-      expect(result.maxPages).toBe(1);
+      expect(result.maxPages).toBe(5);
     });
 
-    test('should apply default useProxy when not provided', () => {
-      const input = { url: 'https://test.com' };
+    test('should apply default proxy configuration when not provided', () => {
+      const input = { listUrls: [{ url: 'https://test.com' }] };
       const result = processInput(input);
       
-      expect(result.useProxy).toBe(false);
+      expect(result.proxy.useApifyProxy).toBe(false);
+      expect(result.proxy.apifyProxyGroups).toEqual([]);
     });
 
     test('should apply default distressKeywords when not provided', () => {
-      const input = { url: 'https://test.com' };
+      const input = { listUrls: [{ url: 'https://test.com' }] };
       const result = processInput(input);
       
       expect(result.distressKeywords).toEqual([
@@ -1074,19 +1116,32 @@ describe('Edge Case Unit Tests', () => {
       ]);
     });
 
+    test('should extract URLs from listUrls array', () => {
+      const input = {
+        listUrls: [
+          { url: 'https://test1.com' },
+          { url: 'https://test2.com' }
+        ]
+      };
+      const result = processInput(input);
+      
+      expect(result.urls).toEqual(['https://test1.com', 'https://test2.com']);
+    });
+
     test('should use provided values when valid', () => {
       const input = {
-        url: 'https://test.com',
+        listUrls: [{ url: 'https://test.com' }],
         maxItems: 100,
         maxPages: 5,
-        useProxy: true,
+        proxy: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] },
         distressKeywords: ['urgent', 'probate']
       };
       const result = processInput(input);
       
       expect(result.maxItems).toBe(100);
       expect(result.maxPages).toBe(5);
-      expect(result.useProxy).toBe(true);
+      expect(result.proxy.useApifyProxy).toBe(true);
+      expect(result.proxy.apifyProxyGroups).toEqual(['RESIDENTIAL']);
       expect(result.distressKeywords).toEqual(['urgent', 'probate']);
     });
   });
@@ -1107,11 +1162,11 @@ describe('Property-Based Tests', () => {
         fc.property(
           fc.webUrl(), // Generate random valid URLs
           (url) => {
-            const input = { url };
+            const input = { listUrls: [{ url }] };
             const processed = processInput(input);
             
             // The actor should successfully read and use the URL
-            expect(processed.url).toBe(url);
+            expect(processed.urls).toEqual([url]);
           }
         ),
         { numRuns: 100 }
@@ -1122,7 +1177,7 @@ describe('Property-Based Tests', () => {
   describe('Property 2: MaxItems default value', () => {
     // Feature: rightmove-scraper, Property 2: MaxItems default value
     // Validates: Requirements 1.2
-    test('should use 50 as default maxItems when not provided or invalid', () => {
+    test('should use 200 as default maxItems when not provided or invalid', () => {
       fc.assert(
         fc.property(
           fc.webUrl(),
@@ -1134,11 +1189,11 @@ describe('Property-Based Tests', () => {
             fc.constant({}) // Invalid: object
           ),
           (url, invalidMaxItems) => {
-            const input = { url, maxItems: invalidMaxItems };
+            const input = { listUrls: [{ url }], maxItems: invalidMaxItems };
             const processed = processInput(input);
             
-            // Should default to 50 when maxItems is not provided or invalid
-            expect(processed.maxItems).toBe(50);
+            // Should default to 200 when maxItems is not provided or invalid
+            expect(processed.maxItems).toBe(200);
           }
         ),
         { numRuns: 100 }
@@ -1148,25 +1203,23 @@ describe('Property-Based Tests', () => {
 
   describe('Property 3: Invalid input rejection', () => {
     // Feature: rightmove-scraper, Property 3: Invalid input rejection
-    // Validates: Requirements 1.3
-    test('should terminate with error when url field is missing, empty, or null', () => {
+    // Validates: Requirements 1.6
+    test('should terminate with error when listUrls field is missing, empty, or invalid', () => {
       fc.assert(
         fc.property(
           fc.oneof(
             fc.constant(null),
             fc.constant(undefined),
-            fc.constant(''),
-            fc.constant('   '), // Whitespace only
-            fc.constant({ maxItems: 50 }) // Missing url
+            fc.constant({ maxItems: 50 }), // Missing listUrls
+            fc.constant({ listUrls: [] }), // Empty array
+            fc.constant({ listUrls: 'not an array' }), // Invalid type
+            fc.constant({ listUrls: [{ url: '' }] }), // Empty URL
+            fc.constant({ listUrls: [{ url: '   ' }] }) // Whitespace only URL
           ),
           (invalidInput) => {
             // Should throw an error for invalid input
             expect(() => {
-              if (invalidInput && typeof invalidInput === 'object' && !invalidInput.url) {
-                validateInput(invalidInput);
-              } else {
-                validateInput({ url: invalidInput });
-              }
+              validateInput(invalidInput);
             }).toThrow('Input validation failed');
           }
         ),
@@ -1308,7 +1361,7 @@ describe('Property-Based Tests', () => {
   describe('Property 9: MaxPages default value', () => {
     // Feature: rightmove-scraper, Property 9: MaxPages default value
     // Validates: Requirements 1.3
-    test('should use 1 as default maxPages when not provided or invalid', () => {
+    test('should use 5 as default maxPages when not provided or invalid', () => {
       fc.assert(
         fc.property(
           fc.webUrl(),
@@ -1319,11 +1372,11 @@ describe('Property-Based Tests', () => {
             fc.string() // Invalid: not a number
           ),
           (url, invalidMaxPages) => {
-            const input = { url, maxPages: invalidMaxPages };
+            const input = { listUrls: [{ url }], maxPages: invalidMaxPages };
             const processed = processInput(input);
             
-            // Should default to 1 when maxPages is not provided or invalid
-            expect(processed.maxPages).toBe(1);
+            // Should default to 5 when maxPages is not provided or invalid
+            expect(processed.maxPages).toBe(5);
           }
         ),
         { numRuns: 100 }
@@ -1334,7 +1387,7 @@ describe('Property-Based Tests', () => {
   describe('Property 10: UseProxy default value', () => {
     // Feature: rightmove-scraper, Property 10: UseProxy default value
     // Validates: Requirements 1.4
-    test('should use false as default useProxy when not provided or invalid', () => {
+    test('should use false as default useApifyProxy when not provided or invalid', () => {
       fc.assert(
         fc.property(
           fc.webUrl(),
@@ -1345,11 +1398,11 @@ describe('Property-Based Tests', () => {
             fc.integer() // Invalid: not a boolean
           ),
           (url, invalidUseProxy) => {
-            const input = { url, useProxy: invalidUseProxy };
+            const input = { listUrls: [{ url }], proxy: { useApifyProxy: invalidUseProxy } };
             const processed = processInput(input);
             
-            // Should default to false when useProxy is not provided or invalid
-            expect(processed.useProxy).toBe(false);
+            // Should default to false when useApifyProxy is not provided or invalid
+            expect(processed.proxy.useApifyProxy).toBe(false);
           }
         ),
         { numRuns: 100 }
@@ -1374,7 +1427,7 @@ describe('Property-Based Tests', () => {
             fc.integer() // Invalid: not an array
           ),
           (url, invalidKeywords) => {
-            const input = { url, distressKeywords: invalidKeywords };
+            const input = { listUrls: [{ url }], distressKeywords: invalidKeywords };
             const processed = processInput(input);
             
             // Should default to standard array when not provided or invalid
@@ -1631,18 +1684,18 @@ describe('Property-Based Tests', () => {
   describe('Property 12: Proxy configuration usage', () => {
     // Feature: rightmove-scraper, Property 12: Proxy configuration usage
     // Validates: Requirements 3.2
-    test('should use proxy for all requests when useProxy is true', () => {
+    test('should use proxy for all requests when useApifyProxy is true', () => {
       // This is tested in integration tests
       // We verify the logic that determines proxy usage
       fc.assert(
         fc.property(
           fc.boolean(),
-          (useProxy) => {
-            const input = { url: 'https://test.com', useProxy };
+          (useApifyProxy) => {
+            const input = { listUrls: [{ url: 'https://test.com' }], proxy: { useApifyProxy } };
             const processed = processInput(input);
             
-            // Verify that useProxy setting is preserved
-            expect(processed.useProxy).toBe(useProxy);
+            // Verify that useApifyProxy setting is preserved
+            expect(processed.proxy.useApifyProxy).toBe(useApifyProxy);
             
             return true;
           }

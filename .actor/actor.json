@@ -6,39 +6,76 @@
   "version": "1.0",
   "buildTag": "latest",
   "dockerfile": "./Dockerfile",
+  "defaultRunOptions": {
+    "build": "latest",
+    "timeoutSecs": 3600,
+    "memoryMbytes": 4096
+  },
   "input": {
     "title": "Rightmove Scraper Input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
-      "url": {
-        "title": "Rightmove Search URL",
-        "type": "string",
-        "description": "The URL of the Rightmove search results page to scrape",
-        "editor": "textfield",
-        "example": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+      "listUrls": {
+        "title": "Search URLs",
+        "type": "array",
+        "description": "Array of Rightmove search result URLs to scrape",
+        "editor": "requestListSources",
+        "example": [
+          {
+            "url": "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+          }
+        ],
+        "items": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Rightmove search results page URL"
+            }
+          },
+          "required": ["url"]
+        }
       },
       "maxItems": {
         "title": "Maximum Items",
         "type": "integer",
-        "description": "Maximum number of property listings to extract across all pages",
-        "default": 50,
+        "description": "Maximum number of property listings to extract across all URLs and pages",
+        "default": 200,
         "minimum": 1,
-        "maximum": 1000
+        "maximum": 10000
       },
       "maxPages": {
-        "title": "Maximum Pages",
+        "title": "Maximum Pages per URL",
         "type": "integer",
-        "description": "Maximum number of search result pages to process",
-        "default": 1,
+        "description": "Maximum number of search result pages to process per URL",
+        "default": 5,
         "minimum": 1,
-        "maximum": 50
+        "maximum": 100
       },
-      "useProxy": {
-        "title": "Use Proxy",
-        "type": "boolean",
-        "description": "Enable Apify proxy to avoid rate limiting and IP blocks",
-        "default": false
+      "proxy": {
+        "title": "Proxy Configuration",
+        "type": "object",
+        "description": "Proxy settings for the scraper",
+        "editor": "proxy",
+        "default": {
+          "useApifyProxy": false
+        },
+        "properties": {
+          "useApifyProxy": {
+            "type": "boolean",
+            "description": "Enable Apify proxy to avoid rate limiting and IP blocks",
+            "default": false
+          },
+          "apifyProxyGroups": {
+            "type": "array",
+            "description": "Apify proxy groups to use (e.g., RESIDENTIAL)",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          }
+        }
       },
       "distressKeywords": {
         "title": "Distress Keywords",
@@ -58,6 +95,6 @@
         }
       }
     },
-    "required": ["url"]
+    "required": ["listUrls"]
   }
 }

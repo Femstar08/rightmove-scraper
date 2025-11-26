@@ -1,57 +1,285 @@
 const { Actor } = require('apify');
+const { PlaywrightCrawler } = require('crawlee');
 const cheerio = require('cheerio');
 
 /**
- * Fetches HTML content from a URL
- * @param {string} url - The URL to fetch
- * @param {boolean} useProxy - Whether to use Apify proxy for the request
- * @returns {Promise<string>} The HTML content
- * @throws {Error} If the request fails
+ * Creates and configures a PlaywrightCrawler instance
+ * @param {Object} config - Configuration object
+ * @param {number} config.maxItems - Maximum number of items to scrape
+ * @param {Object} config.proxy - Proxy configuration
+ * @param {boolean} config.proxy.useApifyProxy - Whether to use Apify proxy
+ * @param {Array<string>} config.proxy.apifyProxyGroups - Apify proxy groups
+ * @param {Function} config.requestHandler - Request handler function
+ * @returns {Promise<PlaywrightCrawler>} Configured crawler instance
  */
-async function fetchPage(url, useProxy = false) {
-  try {
-    console.log(`Fetching page: ${url}${useProxy ? ' (using proxy)' : ''}`);
+async function createCrawler(config) {
+  const { maxItems, proxy, requestHandler } = config;
+  
+  // Configure proxy if enabled
+  let proxyConfiguration = null;
+  if (proxy.useApifyProxy) {
+    console.log('Configuring Apify proxy...');
+    proxyConfiguration = await Actor.createProxyConfiguration({
+      groups: proxy.apifyProxyGroups.length > 0 ? proxy.apifyProxyGroups : undefined
+    });
+    console.log('Apify proxy configured successfully');
+  }
+  
+  // Build crawler configuration
+  const crawlerConfig = {
+    // Request handler for processing pages
+    requestHandler,
     
-    const options = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    // Limit total requests based on maxItems
+    maxRequestsPerCrawl: maxItems,
+    
+    // Set concurrency to 1 to avoid rate limiting
+    maxConcurrency: 1,
+    
+    // Playwright launch options with anti-bot measures
+    launchContext: {
+      launchOptions: {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--disable-blink-features=AutomationControlled'
+        ]
+      },
+      // Use realistic browser fingerprints
+      useChrome: true,
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    },
+    
+    // Handle navigation timeouts gracefully
+    navigationTimeoutSecs: 60,
+    
+    // Retry failed requests with exponential backoff
+    maxRequestRetries: 3,
+    
+    // Add random delays between requests (1-3 seconds)
+    requestHandlerTimeoutSecs: 180,
+    
+    // Pre-navigation hook to add random delays
+    preNavigationHooks: [
+      async ({ page, request }) => {
+        // Random delay between 1-3 seconds
+        const delay = Math.floor(Math.random() * 2000) + 1000;
+        console.log(`Waiting ${delay}ms before navigation to avoid rate limiting...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        // Set realistic viewport
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        
+        // Override navigator.webdriver to avoid detection
+        await page.addInitScript(() => {
+          Object.defineProperty(navigator, 'webdriver', {
+            get: () => false
+          });
+        });
       }
-    };
+    ]
+  };
+  
+  // Only add proxyConfiguration if it's not null
+  if (proxyConfiguration) {
+    crawlerConfig.proxyConfiguration = proxyConfiguration;
+  }
+  
+  // Create PlaywrightCrawler with configuration
+  const crawler = new PlaywrightCrawler(crawlerConfig);
+  
+  return crawler;
+}
 
-    // Configure proxy if enabled
-    if (useProxy) {
-      const proxyConfiguration = await Actor.createProxyConfiguration();
-      const proxyUrl = await proxyConfiguration.newUrl();
-      // For fetch API, we need to use an agent with proxy
-      const { HttpsProxyAgent } = require('https-proxy-agent');
-      options.agent = new HttpsProxyAgent(proxyUrl);
-      console.log('Using Apify proxy for request');
-    }
+/**
+ * Extracts window.PAGE_MODEL from a Playwright page
+ * This is the primary method for extracting property data from Rightmove's JavaScript
+ * @param {Object} page - Playwright page object
+ * @returns {Promise<Object|null>} The PAGE_MODEL object or null if not found
+ */
+async function extractPageModel(page) {
+  try {
+    console.log('Attempting to extract window.PAGE_MODEL or __NEXT_DATA__ from page...');
     
-    const response = await fetch(url, options);
+    const pageModel = await page.evaluate(() => {
+      // Try multiple possible JavaScript data objects
+      if (typeof window.PAGE_MODEL !== 'undefined') {
+        return { source: 'PAGE_MODEL', data: window.PAGE_MODEL };
+      }
+      if (typeof window.__NEXT_DATA__ !== 'undefined') {
+        return { source: '__NEXT_DATA__', data: window.__NEXT_DATA__ };
+      }
+      return null;
+    });
     
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    const body = await response.text();
-    console.log(`Successfully fetched page (status: ${response.status})`);
-    return body;
-  } catch (error) {
-    // Log detailed error information
-    if (error.response) {
-      // HTTP error status (4xx, 5xx)
-      console.error(`HTTP error: Received status ${error.response.statusCode} for URL: ${url}`);
-      throw new Error(`Failed to fetch URL: ${url}. HTTP status: ${error.response.statusCode}`);
-    } else if (error.code) {
-      // Network error (timeout, DNS failure, connection refused, etc.)
-      console.error(`Network error: ${error.code} for URL: ${url}. Message: ${error.message}`);
-      throw new Error(`Failed to fetch URL: ${url}. Error: ${error.message}`);
+    if (pageModel) {
+      console.log(`✓ Successfully extracted JavaScript data object from ${pageModel.source}`);
+      return pageModel.data;
     } else {
-      // Other errors
-      console.error(`Unexpected error fetching URL: ${url}. Error: ${error.message}`);
-      throw new Error(`Failed to fetch URL: ${url}. Error: ${error.message}`);
+      console.log('✗ No JavaScript data object found (window.PAGE_MODEL or __NEXT_DATA__)');
+      return null;
     }
+  } catch (error) {
+    console.warn(`Error extracting PAGE_MODEL: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Extracts property data from the PAGE_MODEL JavaScript object
+ * Handles nested data structures and extracts all property fields
+ * @param {Object} pageModel - The PAGE_MODEL object from window
+ * @param {Array<string>} distressKeywords - Array of distress keywords to detect
+ * @returns {Array<Object>} Array of property objects
+ */
+function extractFromPageModel(pageModel, distressKeywords = []) {
+  try {
+    console.log('Parsing propertyData from PAGE_MODEL...');
+    
+    if (!pageModel) {
+      console.log('No PAGE_MODEL provided');
+      return [];
+    }
+    
+    // Try to find propertyData in various possible locations
+    let propertyData = null;
+    
+    // Check common locations for property data
+    if (pageModel.propertyData) {
+      propertyData = pageModel.propertyData;
+    } else if (pageModel.properties) {
+      propertyData = pageModel.properties;
+    } else if (pageModel.results) {
+      propertyData = pageModel.results;
+    } else if (pageModel.props?.pageProps?.properties) {
+      propertyData = pageModel.props.pageProps.properties;
+    }
+    
+    if (!propertyData) {
+      console.log('No propertyData found in PAGE_MODEL');
+      return [];
+    }
+    
+    // Handle both single property and array of properties
+    const properties = Array.isArray(propertyData) ? propertyData : [propertyData];
+    
+    console.log(`Found ${properties.length} property/properties in JavaScript data`);
+    
+    // Extract each property
+    const extractedProperties = properties.map(prop => {
+      return extractPropertyFromJS(prop, distressKeywords);
+    });
+    
+    return extractedProperties.filter(p => p !== null);
+  } catch (error) {
+    console.warn(`Error parsing propertyData from PAGE_MODEL: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Extracts a single property from JavaScript data object
+ * Handles nested data structures and missing fields
+ * @param {Object} prop - Property data object from JavaScript
+ * @param {Array<string>} distressKeywords - Array of distress keywords to detect
+ * @returns {Object|null} Property object or null if extraction fails
+ */
+function extractPropertyFromJS(prop, distressKeywords = []) {
+  try {
+    // Extract ID (required for identification)
+    const id = prop.id?.toString() || prop.propertyId?.toString() || null;
+    
+    // Extract URL
+    let url = null;
+    if (prop.propertyUrl) {
+      url = prop.propertyUrl.startsWith('http') 
+        ? prop.propertyUrl 
+        : `https://www.rightmove.co.uk${prop.propertyUrl}`;
+    } else if (id) {
+      url = `https://www.rightmove.co.uk/properties/${id}`;
+    }
+    
+    // Extract address (handle nested structure)
+    const address = prop.displayAddress || 
+                   prop.address?.displayAddress || 
+                   prop.address || 
+                   null;
+    
+    // Extract price (handle nested structure)
+    const price = prop.price?.displayPrice || 
+                 prop.price?.amount?.toString() || 
+                 prop.displayPrice || 
+                 prop.price?.toString() || 
+                 null;
+    
+    // Extract description
+    const description = prop.summary || 
+                       prop.description || 
+                       prop.propertySubType || 
+                       null;
+    
+    // Extract bedrooms
+    const bedrooms = prop.bedrooms !== undefined ? prop.bedrooms : null;
+    
+    // Extract bathrooms
+    const bathrooms = prop.bathrooms !== undefined ? prop.bathrooms : null;
+    
+    // Extract property type
+    const propertyType = prop.propertyType || 
+                        prop.propertySubType || 
+                        prop.type || 
+                        null;
+    
+    // Extract images (handle nested arrays)
+    let images = [];
+    if (prop.propertyImages && Array.isArray(prop.propertyImages)) {
+      images = prop.propertyImages.map(img => {
+        if (typeof img === 'string') return img;
+        return img.url || img.srcUrl || img.imageUrl || null;
+      }).filter(Boolean);
+    } else if (prop.images && Array.isArray(prop.images)) {
+      images = prop.images.map(img => {
+        if (typeof img === 'string') return img;
+        return img.url || img.srcUrl || img.imageUrl || null;
+      }).filter(Boolean);
+    } else if (prop.mainImage) {
+      const mainImg = typeof prop.mainImage === 'string' 
+        ? prop.mainImage 
+        : prop.mainImage.url || prop.mainImage.srcUrl;
+      if (mainImg) images.push(mainImg);
+    }
+    
+    // Extract addedOn date
+    const addedOn = prop.addedOn || 
+                   prop.firstVisibleDate || 
+                   prop.listingUpdate?.listingUpdateDate || 
+                   null;
+    
+    // Detect distress keywords
+    const distressData = detectDistress(description, distressKeywords);
+    
+    // Build property object with all fields
+    return {
+      id,
+      url,
+      address,
+      price,
+      description,
+      bedrooms,
+      bathrooms,
+      propertyType,
+      images,
+      addedOn,
+      distressKeywordsMatched: distressData.matched,
+      distressScoreRule: distressData.score
+    };
+  } catch (error) {
+    console.warn(`Error extracting property from JS data: ${error.message}`);
+    return null;
   }
 }
 
@@ -452,88 +680,155 @@ function extractProperty($, element, distressKeywords = []) {
 }
 
 /**
- * Validates the input object
+ * Extracts property data from DOM when JavaScript data is unavailable
+ * This is the fallback method when window.PAGE_MODEL extraction fails
+ * @param {Object} page - Playwright page object
+ * @param {Array<string>} distressKeywords - Array of distress keywords to detect
+ * @returns {Promise<Array<Object>>} Array of property objects extracted from DOM
+ */
+async function extractFromDOM(page, distressKeywords = []) {
+  try {
+    console.log('Extracting property data from DOM...');
+    
+    // Get page HTML content
+    const html = await page.content();
+    
+    // Parse HTML and get property cards
+    const { $, propertyCards, count } = parseHTML(html);
+    
+    // Handle case where no property cards are found
+    if (count === 0) {
+      console.log('No property cards found in DOM');
+      return [];
+    }
+    
+    console.log(`Found ${count} property card(s) in DOM`);
+    
+    // Extract properties from each card
+    const properties = [];
+    propertyCards.each((index, element) => {
+      const property = extractProperty($, element, distressKeywords);
+      properties.push(property);
+    });
+    
+    console.log(`✓ DOM extraction successful: ${properties.length} properties extracted`);
+    return properties;
+  } catch (error) {
+    console.warn(`Error during DOM extraction: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Validates the input object according to Actor Specification 1
  * @param {Object} input - The input object from Actor.getInput()
- * @throws {Error} If neither url nor urls field is provided
+ * @throws {Error} If listUrls field is missing or invalid
  */
 function validateInput(input) {
   if (!input) {
-    throw new Error('Input validation failed: No input provided. Please provide an input object with a "url" or "urls" field.');
+    throw new Error('Input validation failed: No input provided. Please provide an input object with a "listUrls" field.');
   }
   
-  // Check if either url or urls is provided
-  const hasUrl = input.url && typeof input.url === 'string' && input.url.trim() !== '';
-  const hasUrls = input.urls && Array.isArray(input.urls) && input.urls.length > 0;
-  
-  if (!hasUrl && !hasUrls) {
-    throw new Error('Input validation failed: Must provide either "url" (string) or "urls" (array of strings). Please provide at least one Rightmove search URL.');
+  // Check if listUrls is provided (required field)
+  if (!input.listUrls) {
+    throw new Error('Input validation failed: "listUrls" field is required. Please provide an array of URL objects.');
   }
   
-  // Validate url if provided
-  if (input.url) {
-    if (typeof input.url !== 'string') {
-      throw new Error(`Input validation failed: "url" field must be a string, but received type: ${typeof input.url}`);
+  // Validate listUrls is an array
+  if (!Array.isArray(input.listUrls)) {
+    throw new Error(`Input validation failed: "listUrls" must be an array, but received type: ${typeof input.listUrls}`);
+  }
+  
+  // Validate listUrls is not empty
+  if (input.listUrls.length === 0) {
+    throw new Error('Input validation failed: "listUrls" array cannot be empty. Please provide at least one URL object.');
+  }
+  
+  // Validate each URL object in the array
+  input.listUrls.forEach((urlObj, index) => {
+    if (!urlObj || typeof urlObj !== 'object') {
+      throw new Error(`Input validation failed: listUrls[${index}] must be an object with a "url" property.`);
     }
     
-    if (input.url.trim() === '') {
-      throw new Error('Input validation failed: "url" field cannot be empty. Please provide a valid Rightmove search URL.');
+    if (!urlObj.url || typeof urlObj.url !== 'string' || urlObj.url.trim() === '') {
+      throw new Error(`Input validation failed: listUrls[${index}].url must be a non-empty string.`);
+    }
+  });
+  
+  // Validate maxItems if provided (optional integer)
+  if (input.maxItems !== undefined) {
+    if (typeof input.maxItems !== 'number' || !Number.isInteger(input.maxItems) || input.maxItems < 1) {
+      throw new Error(`Input validation failed: "maxItems" must be a positive integer, but received: ${input.maxItems}`);
     }
   }
   
-  // Validate urls if provided
-  if (input.urls) {
-    if (!Array.isArray(input.urls)) {
-      throw new Error(`Input validation failed: "urls" field must be an array, but received type: ${typeof input.urls}`);
+  // Validate maxPages if provided (optional integer)
+  if (input.maxPages !== undefined) {
+    if (typeof input.maxPages !== 'number' || !Number.isInteger(input.maxPages) || input.maxPages < 1) {
+      throw new Error(`Input validation failed: "maxPages" must be a positive integer, but received: ${input.maxPages}`);
+    }
+  }
+  
+  // Validate proxy if provided (optional object)
+  if (input.proxy !== undefined) {
+    if (!input.proxy || typeof input.proxy !== 'object' || Array.isArray(input.proxy)) {
+      throw new Error(`Input validation failed: "proxy" must be an object, but received type: ${typeof input.proxy}`);
     }
     
-    if (input.urls.length === 0) {
-      throw new Error('Input validation failed: "urls" array cannot be empty. Please provide at least one URL.');
+    if (input.proxy.useApifyProxy !== undefined && typeof input.proxy.useApifyProxy !== 'boolean') {
+      throw new Error(`Input validation failed: "proxy.useApifyProxy" must be a boolean, but received type: ${typeof input.proxy.useApifyProxy}`);
+    }
+  }
+  
+  // Validate distressKeywords if provided (optional array of strings)
+  if (input.distressKeywords !== undefined) {
+    if (!Array.isArray(input.distressKeywords)) {
+      throw new Error(`Input validation failed: "distressKeywords" must be an array, but received type: ${typeof input.distressKeywords}`);
     }
     
-    // Validate each URL in the array
-    input.urls.forEach((url, index) => {
-      if (typeof url !== 'string' || url.trim() === '') {
-        throw new Error(`Input validation failed: urls[${index}] must be a non-empty string.`);
+    input.distressKeywords.forEach((keyword, index) => {
+      if (typeof keyword !== 'string') {
+        throw new Error(`Input validation failed: distressKeywords[${index}] must be a string, but received type: ${typeof keyword}`);
       }
     });
   }
 }
 
 /**
- * Reads and processes input with default values
- * @param {Object} input - The raw input object
+ * Processes input with default values according to Actor Specification 1
+ * @param {Object} input - The raw input object (already validated)
  * @returns {Object} Processed input with defaults applied
  */
 function processInput(input) {
-  const maxItems = input.maxItems && typeof input.maxItems === 'number' && input.maxItems > 0
+  // Extract URLs from listUrls array of objects
+  const urls = input.listUrls.map(urlObj => urlObj.url);
+  
+  // Apply default value for maxItems (default: 200)
+  const maxItems = input.maxItems !== undefined && typeof input.maxItems === 'number' && input.maxItems > 0
     ? input.maxItems
-    : 50;
+    : 200;
 
-  const maxPages = input.maxPages && typeof input.maxPages === 'number' && input.maxPages > 0
+  // Apply default value for maxPages (default: 5)
+  const maxPages = input.maxPages !== undefined && typeof input.maxPages === 'number' && input.maxPages > 0
     ? input.maxPages
-    : 1;
+    : 5;
 
-  const useProxy = input.useProxy && typeof input.useProxy === 'boolean'
-    ? input.useProxy
-    : false;
+  // Process proxy configuration object (default: useApifyProxy = false)
+  const proxy = {
+    useApifyProxy: input.proxy?.useApifyProxy === true,
+    apifyProxyGroups: input.proxy?.apifyProxyGroups || []
+  };
 
+  // Apply default value for distressKeywords
   const distressKeywords = input.distressKeywords && Array.isArray(input.distressKeywords) && input.distressKeywords.length > 0
     ? input.distressKeywords
     : ['reduced', 'chain free', 'auction', 'motivated', 'cash buyers', 'needs renovation'];
-
-  // Handle both single url and multiple urls
-  let urls = [];
-  if (input.urls && Array.isArray(input.urls) && input.urls.length > 0) {
-    urls = input.urls;
-  } else if (input.url) {
-    urls = [input.url];
-  }
 
   return {
     urls,
     maxItems,
     maxPages,
-    useProxy,
+    proxy,
     distressKeywords
   };
 }
@@ -576,74 +871,92 @@ function buildPageUrl(baseUrl, pageIndex) {
 }
 
 /**
- * Scrapes properties from a Rightmove URL with pagination support
- * Coordinates fetching, parsing, and extraction across multiple pages
+ * Scrapes properties from a Rightmove URL with pagination support using Crawlee
  * @param {string} url - The Rightmove URL to scrape
  * @param {number} maxItems - Maximum number of properties to extract across all pages
  * @param {number} maxPages - Maximum number of pages to process
  * @param {Array<string>} distressKeywords - Array of distress keywords to detect
- * @param {boolean} useProxy - Whether to use Apify proxy for HTTP requests
+ * @param {Object} proxy - Proxy configuration object
  * @returns {Promise<Object>} Object containing properties array and pagesProcessed count
  */
-async function scrapeProperties(url, maxItems, maxPages = 1, distressKeywords = [], useProxy = false) {
+async function scrapeProperties(url, maxItems, maxPages = 1, distressKeywords = [], proxy = { useApifyProxy: false }) {
   const allProperties = [];
   let pagesProcessed = 0;
+  let itemsExtracted = 0;
 
   try {
     console.log(`Starting pagination: will process up to ${maxPages} page(s) and extract up to ${maxItems} item(s)`);
     
-    // Loop through pages up to maxPages
-    for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
-      // Stop if we've already reached maxItems
-      if (allProperties.length >= maxItems) {
-        console.log(`Reached maxItems limit (${maxItems}), stopping pagination`);
-        break;
+    // Create request handler for Crawlee
+    const requestHandler = async ({ page, request }) => {
+      console.log(`Processing page: ${request.url}`);
+      
+      // Wait for JavaScript content to load
+      try {
+        await page.waitForLoadState('networkidle', { timeout: 30000 });
+      } catch (error) {
+        console.warn(`Network idle timeout, continuing anyway: ${error.message}`);
       }
-
-      // Build the URL for this page
-      const pageUrl = buildPageUrl(url, pageIndex);
-      
-      // Log each page being fetched with page number and URL
-      console.log(`--- Page ${pageIndex + 1}/${maxPages} ---`);
-      console.log(`URL: ${pageUrl}`);
-
-      // Fetch HTML content with proxy support
-      const html = await fetchPage(pageUrl, useProxy);
-      
-      // Parse HTML and get property cards
-      const { $, propertyCards, count } = parseHTML(html);
-      
-      // Stop early if no properties found on this page
-      if (count === 0) {
-        console.log(`No properties found on page ${pageIndex + 1}, stopping pagination`);
-        break;
-      }
-
-      // Log number of properties found on each page
-      console.log(`Found ${count} property card(s) on page ${pageIndex + 1}`);
       
       // Calculate how many more properties we can extract
-      const remainingSlots = maxItems - allProperties.length;
+      const remainingSlots = maxItems - itemsExtracted;
       
       // Extract properties from this page
-      const pageProperties = [];
+      let pageProperties = [];
       
-      propertyCards.each((index, element) => {
-        // Stop if we've extracted enough from this page
-        if (pageProperties.length >= remainingSlots) {
-          return false; // Break out of .each() loop
-        }
+      // PRIMARY METHOD: Try to extract from JavaScript data (window.PAGE_MODEL)
+      console.log('Attempting JavaScript data extraction...');
+      const pageModel = await extractPageModel(page);
+      
+      if (pageModel) {
+        pageProperties = extractFromPageModel(pageModel, distressKeywords);
+        console.log(`✓ JavaScript extraction successful: ${pageProperties.length} properties found`);
+      }
+      
+      // FALLBACK METHOD: If JavaScript extraction fails or returns no data, fall back to DOM parsing
+      if (pageProperties.length === 0) {
+        console.log('JavaScript extraction yielded no results, falling back to DOM parsing...');
+        pageProperties = await extractFromDOM(page, distressKeywords);
         
-        const property = extractProperty($, element, distressKeywords);
-        pageProperties.push(property);
-      });
+        // Stop early if no properties found on this page
+        if (pageProperties.length === 0) {
+          console.log(`No properties found on this page, stopping pagination`);
+          return;
+        }
+      }
+      
+      // Limit to remaining slots
+      const propertiesToAdd = pageProperties.slice(0, remainingSlots);
       
       // Add properties from this page to the aggregate
-      allProperties.push(...pageProperties);
+      allProperties.push(...propertiesToAdd);
+      itemsExtracted += propertiesToAdd.length;
       pagesProcessed++;
       
-      console.log(`Extracted ${pageProperties.length} property/properties from page ${pageIndex + 1} (total so far: ${allProperties.length}/${maxItems})`);
+      console.log(`Extracted ${propertiesToAdd.length} property/properties from this page (total so far: ${itemsExtracted}/${maxItems})`);
+    };
+    
+    // Create crawler with configuration
+    const crawler = await createCrawler({
+      maxItems,
+      proxy,
+      requestHandler
+    });
+    
+    // Build URLs for all pages up to maxPages
+    const urls = [];
+    for (let pageIndex = 0; pageIndex < maxPages; pageIndex++) {
+      const pageUrl = buildPageUrl(url, pageIndex);
+      urls.push(pageUrl);
     }
+    
+    console.log(`Queuing ${urls.length} page(s) for crawling`);
+    
+    // Add URLs to crawler queue
+    await crawler.addRequests(urls);
+    
+    // Run the crawler
+    await crawler.run();
     
     console.log(`Pagination complete: extracted ${allProperties.length} properties from ${pagesProcessed} page(s)`);
     
@@ -683,7 +996,10 @@ async function main() {
     input.urls.forEach((url, i) => console.log(`  ${i + 1}. ${url}`));
     console.log(`Max items per URL: ${input.maxItems}`);
     console.log(`Max pages per URL: ${input.maxPages}`);
-    console.log(`Use proxy: ${input.useProxy}`);
+    console.log(`Use Apify proxy: ${input.proxy.useApifyProxy}`);
+    if (input.proxy.apifyProxyGroups.length > 0) {
+      console.log(`Proxy groups: [${input.proxy.apifyProxyGroups.join(', ')}]`);
+    }
     console.log(`Distress keywords: [${input.distressKeywords.join(', ')}]`);
     console.log('===========================');
     
@@ -696,7 +1012,7 @@ async function main() {
       console.log(`\n=== Processing URL ${i + 1}/${input.urls.length} ===`);
       console.log(`URL: ${url}`);
       
-      const result = await scrapeProperties(url, input.maxItems, input.maxPages, input.distressKeywords, input.useProxy);
+      const result = await scrapeProperties(url, input.maxItems, input.maxPages, input.distressKeywords, input.proxy);
       
       allProperties.push(...result.properties);
       totalPagesProcessed += result.pagesProcessed;
@@ -731,7 +1047,7 @@ module.exports = {
   main,
   validateInput,
   processInput,
-  fetchPage,
+  createCrawler,
   parseHTML,
   scrapeProperties,
   buildPageUrl,
@@ -742,7 +1058,11 @@ module.exports = {
   extractDescription,
   extractAddedOn,
   extractImage,
-  detectDistress
+  detectDistress,
+  extractPageModel,
+  extractFromPageModel,
+  extractPropertyFromJS,
+  extractFromDOM
 };
 
 // Run the actor if this file is executed directly
