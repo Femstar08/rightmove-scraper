@@ -225,11 +225,20 @@ function extractPropertyFromJS(prop, distressKeywords = []) {
                  prop.price?.toString() || 
                  null;
     
-    // Extract description
+    // Extract description - try multiple possible field names
     const description = prop.summary || 
                        prop.description || 
+                       prop.text || 
+                       prop.propertyDescription ||
+                       prop.displayAddress ||  // Fallback: use address for keyword matching
                        prop.propertySubType || 
                        null;
+    
+    // Debug: Log if description is missing (only for first property)
+    if (!description && id && !extractPropertyFromJS._logged) {
+      console.debug(`⚠️ Property ${id}: No description found. Available fields:`, Object.keys(prop).slice(0, 20).join(', '));
+      extractPropertyFromJS._logged = true;
+    }
     
     // Extract bedrooms
     const bedrooms = prop.bedrooms !== undefined ? prop.bedrooms : null;
