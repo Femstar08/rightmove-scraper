@@ -1082,16 +1082,36 @@ async function main() {
       console.log(`Extracted ${result.properties.length} properties from ${result.pagesProcessed} page(s) for this URL`);
     }
     
-    // Push all results to Apify dataset
+    // Filter to only include properties with distress signals (if enabled)
+    const onlyDistressed = input.onlyDistressed !== false; // Default to true
+    let finalProperties = allProperties;
+    let filteredCount = 0;
+    
+    if (onlyDistressed) {
+      const propertiesWithDistress = allProperties.filter(p => p.distressScoreRule > 0);
+      filteredCount = allProperties.length - propertiesWithDistress.length;
+      finalProperties = propertiesWithDistress;
+      
+      if (filteredCount > 0) {
+        console.log(`\n🔍 Filtered out ${filteredCount} properties with no distress signals`);
+        console.log(`📊 Keeping ${finalProperties.length} properties with distress signals`);
+      }
+    }
+    
+    // Push results to Apify dataset
     console.log('\nSaving results to dataset...');
-    await Actor.pushData(allProperties);
+    await Actor.pushData(finalProperties);
     
     // Log final summary
     console.log('\n=== Final Scraping Summary ===');
     console.log(`Total URLs processed: ${input.urls.length}`);
     console.log(`Total pages processed: ${totalPagesProcessed}`);
-    console.log(`Total items extracted: ${allProperties.length}`);
+    console.log(`Total items found: ${allProperties.length}`);
     console.log(`Items with distress signals: ${allProperties.filter(p => p.distressScoreRule > 0).length}`);
+    if (onlyDistressed && filteredCount > 0) {
+      console.log(`Items filtered out: ${filteredCount}`);
+    }
+    console.log(`Final dataset size: ${finalProperties.length}`);
     console.log('==============================');
     
     await Actor.exit();

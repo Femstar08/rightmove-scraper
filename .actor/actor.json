@@ -52,7 +52,7 @@
       "distressKeywords": {
         "title": "Distress Keywords",
         "type": "array",
-        "description": "Keywords to detect in property descriptions that indicate potential distressed sales",
+        "description": "Keywords to detect in property descriptions that indicate potential distressed sales, investment opportunities, or motivated sellers",
         "editor": "stringList",
         "default": [
           "reduced",
@@ -60,11 +60,41 @@
           "auction",
           "motivated",
           "cash buyers",
-          "needs renovation"
+          "needs renovation",
+          "investment opportunity",
+          "development potential",
+          "refurbishment",
+          "modernisation",
+          "quick sale",
+          "urgent sale",
+          "probate",
+          "executor sale",
+          "repossession",
+          "below market value",
+          "bmv",
+          "needs work",
+          "fixer upper",
+          "project",
+          "potential",
+          "opportunity",
+          "investment",
+          "development",
+          "conversion",
+          "planning permission",
+          "vacant possession",
+          "tenanted",
+          "rental income",
+          "yield"
         ],
         "items": {
           "type": "string"
         }
+      },
+      "onlyDistressed": {
+        "title": "Only Return Distressed Properties",
+        "type": "boolean",
+        "description": "If true, only returns properties that match at least one distress keyword. If false, returns all properties with distress scores.",
+        "default": true
       }
     },
     "required": ["startUrls"]
