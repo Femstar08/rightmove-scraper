@@ -2,25 +2,25 @@
 
 ## Progress Summary
 
-**Phase 1: Adapter Architecture Foundation** - 🟢 60% Complete (6/10 tasks)
+**Phase 1: Adapter Architecture Foundation** - 🟢 80% Complete (8/10 tasks)
 
 - ✅ Base adapter interface created
 - ✅ Site detector (AdapterFactory) implemented
 - ✅ Rightmove adapter refactored (700+ lines)
+- ✅ Orchestrator with URL grouping & statistics ✨ NEW
 - ✅ Input schema updated with `site` parameter
 - ✅ main-v2.js created with adapter integration
-- ✅ 16 adapter tests passing
-- ⏳ Orchestrator needs URL grouping & statistics
-- ⏳ Field mapping utilities needed
-- ⏳ Enhanced logging needed
+- ✅ 34 tests passing (16 adapter + 18 orchestrator)
+- ⏳ Field mapping utilities needed (Task 6)
+- ⏳ Enhanced logging needed (Task 9)
 
 **Next Steps:**
 
-1. Test main-v2.js with real scraping
-2. Complete orchestrator features (URL grouping, statistics)
-3. Implement field mapping utilities
-4. Add enhanced logging
-5. Replace main.js with main-v2.js
+1. Implement field mapping utilities (Task 6)
+2. Add enhanced logging (Task 9)
+3. Test main-v2.js with real scraping
+4. Complete Phase 1 checkpoint
+5. Begin Phase 2: Zoopla adapter
 
 ---
 
@@ -55,19 +55,22 @@
   - ✅ Tests for URL detection, site name detection, error handling
   - **Validates: Requirements 2.1, 2.2, 2.3**
 
-- [ ] 3. Create core orchestrator
+- [x] 3. Create core orchestrator ✅ **COMPLETED**
 
-  - Create `src/core/Orchestrator.js`
-  - Implement adapter initialization
-  - Implement URL grouping by site
-  - Implement per-site processing
-  - Add error handling per adapter
-  - Add statistics tracking per portal
+  - ✅ Created `src/core/orchestrator.js`
+  - ✅ Implemented adapter initialization (lazy, with reuse)
+  - ✅ Implemented URL grouping by site (automatic detection)
+  - ✅ Implemented per-site processing support
+  - ✅ Added error handling per adapter (isolation)
+  - ✅ Added statistics tracking per portal
+  - ✅ Added aggregated statistics across sites
   - _Requirements: 1.1, 1.6, 9.2, 11.1, 11.5_
 
-- [ ]\* 3.1 Write property test for error isolation
+- [x]\* 3.1 Write property test for error isolation ✅ **COMPLETED**
 
   - **Property 7: Error isolation**
+  - ✅ 18 tests passing in `src/core/orchestrator.test.js`
+  - ✅ Tests error handling, statistics, URL grouping
   - **Validates: Requirements 11.1, 11.5**
 
 - [x] 4. Refactor existing Rightmove code into adapter ✅ **COMPLETED**
