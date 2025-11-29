@@ -1,9 +1,9 @@
 {
   "actorSpecification": 1,
   "name": "rightmove-scraper",
-  "title": "Rightmove Property Scraper with Distress Detection",
-  "description": "Scrapes property listings from Rightmove search results with built-in distress keyword detection for identifying investment opportunities",
-  "version": "1.0",
+  "title": "Rightmove Property Scraper with Full Details & Monitoring",
+  "description": "Advanced Rightmove scraper with 30+ property fields, distress detection, monitoring mode, delisting tracker, and price history. Perfect for property investors and deal sourcers.",
+  "version": "2.0",
   "buildTag": "latest",
   "dockerfile": "./Dockerfile",
   "defaultRunOptions": {
@@ -12,10 +12,19 @@
     "memoryMbytes": 4096
   },
   "input": {
-    "title": "Rightmove Scraper Input",
+    "title": "UK Property Scraper Input",
     "type": "object",
     "schemaVersion": 1,
     "properties": {
+      "site": {
+        "title": "Property Site",
+        "type": "string",
+        "description": "Which property site to scrape",
+        "enum": ["rightmove"],
+        "enumTitles": ["Rightmove"],
+        "default": "rightmove",
+        "editor": "select"
+      },
       "startUrls": {
         "title": "Start URLs",
         "type": "array",
@@ -113,6 +122,51 @@
         "type": "boolean",
         "description": "If true, only returns properties that match at least one distress keyword. If false, returns all properties with distress scores.",
         "default": true
+      },
+      "propertyUrls": {
+        "title": "Property URLs",
+        "type": "array",
+        "description": "Direct property page URLs to scrape (optional). Use this to scrape specific properties without searching.",
+        "editor": "requestListSources",
+        "prefill": [],
+        "items": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "fullPropertyDetails": {
+        "title": "Full Property Details",
+        "type": "boolean",
+        "description": "If true, visits each property detail page to extract comprehensive data (30+ fields). If false, only extracts data from search result cards.",
+        "default": true
+      },
+      "monitoringMode": {
+        "title": "Monitoring Mode",
+        "type": "boolean",
+        "description": "If true, only returns newly added properties compared to the previous run. Useful for daily monitoring.",
+        "default": false
+      },
+      "enableDelistingTracker": {
+        "title": "Enable Delisting Tracker",
+        "type": "boolean",
+        "description": "If true, tracks properties in a Key-Value store to identify when properties are removed from Rightmove.",
+        "default": false
+      },
+      "addEmptyTrackerRecord": {
+        "title": "Add Empty Tracker Record",
+        "type": "boolean",
+        "description": "If true, adds properties to the delisting tracker even if they don't exist yet. Used for initialization.",
+        "default": false
+      },
+      "includePriceHistory": {
+        "title": "Include Price History",
+        "type": "boolean",
+        "description": "If true, extracts price history from property detail pages. Note: This may slow down scraping significantly.",
+        "default": false
       }
     },
     "required": ["startUrls"]
