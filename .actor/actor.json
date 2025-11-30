@@ -128,18 +128,7 @@
         "type": "array",
         "description": "Direct property page URLs to scrape (optional). Use this to scrape specific properties without searching.",
         "editor": "requestListSources",
-        "prefill": [],
-        "items": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "title": "URL",
-              "type": "string",
-              "description": "Property detail page URL",
-              "editor": "textfield"
-            }
-          }
-        }
+        "prefill": []
       },
       "fullPropertyDetails": {
         "title": "Full Property Details",
