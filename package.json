@@ -1,7 +1,7 @@
 {
   "name": "rightmove-scraper",
-  "version": "1.0.0",
-  "description": "Apify Actor for scraping property listings from Rightmove",
+  "version": "2.1.0",
+  "description": "Apify Actor for scraping property listings from Rightmove with full property details, monitoring mode, and delisting tracker",
   "main": "src/main.js",
   "scripts": {
     "start": "node src/main.js",

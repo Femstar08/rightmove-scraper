@@ -8,9 +8,10 @@
 - ✅ Site detector (AdapterFactory) implemented
 - ✅ Rightmove adapter refactored (700+ lines)
 - ✅ Orchestrator with URL grouping & statistics
+- ✅ **Unified schema fully documented** ✨ NEW
 - ✅ Field mapping utilities with validation
-- ✅ Enhanced logging with site context ✨ NEW
-- ✅ Input schema updated with `site` parameter
+- ✅ Enhanced logging with site context
+- ✅ Input schema updated with `crossSiteDeduplication` and `siteConfig` ✨ NEW
 - ✅ main-v2.js created with adapter integration
 - ✅ **98 tests passing** (16 adapter + 18 orchestrator + 37 field-mapping + 27 logger)
 
@@ -18,7 +19,9 @@
 
 - Complete adapter pattern architecture
 - Multi-site orchestration framework
-- Unified schema with validation
+- Unified schema with comprehensive documentation
+- Cross-site deduplication support in schema
+- Site-specific configuration in input schema
 - Comprehensive logging system
 - Solid foundation for Phase 2
 
@@ -96,15 +99,18 @@
   - **Property 5: Backward compatibility**
   - **Validates: Requirements 6.1, 6.2, 6.3**
 
-- [ ] 5. Update unified schema definition
+- [x] 5. Update unified schema definition ✅ **COMPLETED**
 
-  - Add `source` field (portal name)
-  - Add `sourceUrl` field (original URL)
-  - Add `sources` array for duplicates
-  - Add `duplicateOf` array
-  - Add `_isDuplicate` boolean
-  - Add `additionalData` object for site-specific fields
-  - Document all fields with JSDoc
+  - ✅ Created `src/schemas/unified-property-schema.js` with complete schema definition
+  - ✅ Added `source` field (portal name)
+  - ✅ Added `sourceUrl` field (original URL)
+  - ✅ Added `sources` array for duplicates
+  - ✅ Added `duplicateOf` array
+  - ✅ Added `_isDuplicate` boolean
+  - ✅ Added `additionalData` object for site-specific fields
+  - ✅ Created comprehensive documentation in `docs/UNIFIED_SCHEMA.md`
+  - ✅ Documented all fields with JSDoc and examples
+  - ✅ Included examples for Rightmove, Zoopla, and deduplicated properties
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.6_
 
 - [ ]\* 5.1 Write property test for unified schema consistency
@@ -130,12 +136,12 @@
   - ✅ Tests validation, normalization, postcode extraction, merging
   - **Validates: Requirements 4.5**
 
-- [x] 7. Update input schema for multi-site support ✅ **PARTIALLY COMPLETED**
+- [x] 7. Update input schema for multi-site support ✅ **COMPLETED**
 
   - ✅ Updated `.actor/actor.json`
   - ✅ Added `site` parameter with enum ["rightmove"] (default: "rightmove")
-  - ⏳ TODO: Add `crossSiteDeduplication` boolean field (default: true)
-  - ⏳ TODO: Add `siteConfig` object with per-portal settings
+  - ✅ Added `crossSiteDeduplication` boolean field (default: true)
+  - ✅ Added `siteConfig` object with per-portal settings
   - ✅ Maintained backward compatibility with existing fields
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 

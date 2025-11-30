@@ -1,9 +1,9 @@
 {
   "actorSpecification": 1,
   "name": "rightmove-scraper",
-  "title": "Rightmove Property Scraper with Full Details & Monitoring",
-  "description": "Advanced Rightmove scraper with 30+ property fields, distress detection, monitoring mode, delisting tracker, and price history. Perfect for property investors and deal sourcers.",
-  "version": "2.0",
+  "title": "UK Property Scraper - Multi-Site Support (Rightmove + More)",
+  "description": "Advanced UK property scraper with multi-site architecture, 30+ property fields, distress detection, monitoring mode, delisting tracker, and cross-site deduplication. Currently supports Rightmove with Zoopla coming soon. Perfect for property investors and deal sourcers.",
+  "version": "2.1",
   "buildTag": "latest",
   "dockerfile": "./Dockerfile",
   "defaultRunOptions": {
@@ -159,6 +159,80 @@
         "type": "boolean",
         "description": "If true, extracts price history from property detail pages. Note: This may slow down scraping significantly.",
         "default": false
+      },
+      "crossSiteDeduplication": {
+        "title": "Cross-Site Deduplication",
+        "type": "boolean",
+        "description": "If true, identifies and merges duplicate properties that appear on multiple portals. Duplicates are detected by matching addresses.",
+        "default": true
+      },
+      "siteConfig": {
+        "title": "Site-Specific Configuration",
+        "type": "object",
+        "description": "Configure settings per property portal. Overrides global settings for specific sites.",
+        "editor": "json",
+        "prefill": {
+          "rightmove": {
+            "enabled": true,
+            "maxPages": 5,
+            "maxItems": 100
+          },
+          "zoopla": {
+            "enabled": true,
+            "maxPages": 5,
+            "maxItems": 100
+          }
+        },
+        "properties": {
+          "rightmove": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "Enable or disable Rightmove scraping"
+              },
+              "maxPages": {
+                "type": "integer",
+                "description": "Maximum pages to scrape for Rightmove"
+              },
+              "maxItems": {
+                "type": "integer",
+                "description": "Maximum items to extract from Rightmove"
+              },
+              "distressKeywords": {
+                "type": "array",
+                "description": "Rightmove-specific distress keywords (merged with global)",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "zoopla": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "description": "Enable or disable Zoopla scraping"
+              },
+              "maxPages": {
+                "type": "integer",
+                "description": "Maximum pages to scrape for Zoopla"
+              },
+              "maxItems": {
+                "type": "integer",
+                "description": "Maximum items to extract from Zoopla"
+              },
+              "distressKeywords": {
+                "type": "array",
+                "description": "Zoopla-specific distress keywords (merged with global)",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "required": ["startUrls"]
