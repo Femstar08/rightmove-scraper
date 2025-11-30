@@ -134,7 +134,9 @@
           "properties": {
             "url": {
               "title": "URL",
-              "type": "string"
+              "type": "string",
+              "description": "Property detail page URL",
+              "editor": "textfield"
             }
           }
         }
