@@ -17,8 +17,8 @@ describe('Adapter Pattern', () => {
 
     test('throws error for unsupported site', () => {
       expect(() => {
-        AdapterFactory.createAdapter('zoopla');
-      }).toThrow('Unsupported site: zoopla');
+        AdapterFactory.createAdapter('onthemarket');
+      }).toThrow('Unsupported site: onthemarket');
     });
 
     test('throws error for invalid input', () => {
@@ -35,8 +35,10 @@ describe('Adapter Pattern', () => {
 
     test('isSiteSupported works correctly', () => {
       expect(AdapterFactory.isSiteSupported('rightmove')).toBe(true);
-      expect(AdapterFactory.isSiteSupported('zoopla')).toBe(false);
+      expect(AdapterFactory.isSiteSupported('zoopla')).toBe(true);
+      expect(AdapterFactory.isSiteSupported('onthemarket')).toBe(false);
       expect(AdapterFactory.isSiteSupported('https://www.rightmove.co.uk')).toBe(true);
+      expect(AdapterFactory.isSiteSupported('https://www.zoopla.co.uk')).toBe(true);
     });
   });
 

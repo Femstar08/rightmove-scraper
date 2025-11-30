@@ -20,8 +20,8 @@
         "title": "Property Site",
         "type": "string",
         "description": "Which property site to scrape",
-        "enum": ["rightmove"],
-        "enumTitles": ["Rightmove"],
+        "enum": ["rightmove", "zoopla"],
+        "enumTitles": ["Rightmove", "Zoopla"],
         "default": "rightmove",
         "editor": "select"
       },

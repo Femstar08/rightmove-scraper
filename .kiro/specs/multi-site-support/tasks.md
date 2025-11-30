@@ -176,7 +176,7 @@
 
 ## Phase 2: Zoopla Adapter Implementation (Tasks 11-20)
 
-- [ ] 11. Research Zoopla page structure
+- [x] 11. Research Zoopla page structure
 
   - Visit Zoopla search results pages
   - Inspect JavaScript data objects (window.**PRELOADED_STATE**)
@@ -186,7 +186,7 @@
   - Identify field mappings to unified schema
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 12. Create Zoopla adapter skeleton
+- [x] 12. Create Zoopla adapter skeleton
 
   - Create `src/adapters/ZooplaAdapter.js`
   - Extend BaseAdapter

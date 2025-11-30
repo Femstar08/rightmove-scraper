@@ -1,4 +1,5 @@
 const RightmoveAdapter = require('./rightmove-adapter');
+const ZooplaAdapter = require('./zoopla-adapter');
 
 /**
  * Site Adapter Factory
@@ -19,14 +20,15 @@ class AdapterFactory {
       case 'rightmove':
         return new RightmoveAdapter(config);
       
+      case 'zoopla':
+        return new ZooplaAdapter(config);
+      
       // Future adapters
-      // case 'zoopla':
-      //   return new ZooplaAdapter(config);
       // case 'onthemarket':
       //   return new OnTheMarketAdapter(config);
       
       default:
-        throw new Error(`Unsupported site: ${siteName}. Supported sites: rightmove`);
+        throw new Error(`Unsupported site: ${siteName}. Supported sites: ${this.getSupportedSites().join(', ')}`);
     }
   }
 
@@ -77,7 +79,7 @@ class AdapterFactory {
    * @returns {Array<string>} Array of supported site names
    */
   static getSupportedSites() {
-    return ['rightmove']; // Add more as implemented
+    return ['rightmove', 'zoopla'];
   }
 
   /**

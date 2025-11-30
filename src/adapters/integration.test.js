@@ -213,11 +213,11 @@ describe('Adapter Integration Tests', () => {
     });
 
     test('throws error for unsupported site URL', () => {
-      const unsupportedUrl = 'https://www.zoopla.co.uk/for-sale/';
+      const unsupportedUrl = 'https://www.onthemarket.com/for-sale/';
       
       expect(() => {
         AdapterFactory.createAdapter(unsupportedUrl);
-      }).toThrow('Unsupported site: zoopla');
+      }).toThrow('Unsupported site: onthemarket');
     });
 
     test('lists supported sites', () => {
@@ -229,8 +229,10 @@ describe('Adapter Integration Tests', () => {
 
     test('checks site support correctly', () => {
       expect(AdapterFactory.isSiteSupported('rightmove')).toBe(true);
-      expect(AdapterFactory.isSiteSupported('zoopla')).toBe(false);
+      expect(AdapterFactory.isSiteSupported('zoopla')).toBe(true);
+      expect(AdapterFactory.isSiteSupported('onthemarket')).toBe(false);
       expect(AdapterFactory.isSiteSupported('https://www.rightmove.co.uk')).toBe(true);
+      expect(AdapterFactory.isSiteSupported('https://www.zoopla.co.uk')).toBe(true);
     });
   });
 
