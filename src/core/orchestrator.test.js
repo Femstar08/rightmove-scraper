@@ -225,3 +225,59 @@ describe('Orchestrator', () => {
     });
   });
 });
+
+  describe('Deduplication', () => {
+    test('should return properties unchanged when deduplication disabled', () => {
+      const orch = new Orchestrator({ crossSiteDeduplication: false });
+      const properties = [
+        { id: '1', address: 'Test', source: 'rightmove' },
+        { id: '2', address: 'Test', source: 'zoopla' }
+      ];
+
+      const result = orch.applyDeduplication(properties);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return properties unchanged for single site', () => {
+      const orch = new Orchestrator();
+      const properties = [
+        { id: '1', address: 'Test A', source: 'rightmove' },
+        { id: '2', address: 'Test B', source: 'rightmove' }
+      ];
+
+      const result = orch.applyDeduplication(properties);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should deduplicate properties from multiple sites', () => {
+      const orch = new Orchestrator();
+      const properties = [
+        { 
+          id: '1', 
+          address: 'High Street, London SW1A 1AA',
+          outcode: 'SW1A',
+          incode: '1AA',
+          source: 'rightmove' 
+        },
+        { 
+          id: '2', 
+          address: 'High Street, London SW1A 1AA',
+          outcode: 'SW1A',
+          incode: '1AA',
+          source: 'zoopla' 
+        }
+      ];
+
+      const result = orch.applyDeduplication(properties);
+      expect(result).toHaveLength(1);
+      expect(result[0]._isDuplicate).toBe(true);
+      expect(result[0].sources).toContain('rightmove');
+      expect(result[0].sources).toContain('zoopla');
+    });
+
+    test('should handle empty array', () => {
+      const orch = new Orchestrator();
+      const result = orch.applyDeduplication([]);
+      expect(result).toEqual([]);
+    });
+  });

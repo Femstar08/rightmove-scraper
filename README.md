@@ -1,6 +1,17 @@
-# Rightmove Property Scraper with Distress Detection
+# UK Property Scraper - Multi-Site Support
 
-A powerful Apify Actor that scrapes property listings from Rightmove search results with built-in distress keyword detection for identifying investment opportunities. Perfect for property investors, deal sourcers, and automation workflows.
+A powerful Apify Actor that scrapes property listings from multiple UK property portals (Rightmove, Zoopla) with built-in distress keyword detection, cross-site deduplication, and comprehensive property data extraction. Perfect for property investors, deal sourcers, and automation workflows.
+
+## 🆕 What's New in v2.1
+
+- **Multi-Site Support**: Scrape Rightmove and Zoopla in a single run
+- **Cross-Site Deduplication**: Automatically identify and merge duplicate properties
+- **Site-Specific Configuration**: Configure settings per portal
+- **Enhanced Logging**: Detailed per-portal statistics
+- **Unified Output Schema**: Consistent format across all portals
+- **100% Backward Compatible**: Existing configurations work unchanged
+
+[📖 Multi-Site Guide](./docs/MULTI_SITE_GUIDE.md) | [📋 Unified Schema](./docs/UNIFIED_SCHEMA.md)
 
 ## Overview
 

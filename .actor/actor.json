@@ -1,9 +1,9 @@
 {
   "actorSpecification": 1,
   "name": "rightmove-scraper",
-  "title": "UK Property Scraper - Multi-Site Support (Rightmove + More)",
-  "description": "Advanced UK property scraper with multi-site architecture, 30+ property fields, distress detection, monitoring mode, delisting tracker, and cross-site deduplication. Currently supports Rightmove with Zoopla coming soon. Perfect for property investors and deal sourcers.",
-  "version": "2.1",
+  "title": "UK Property Scraper - Multi-Site (Rightmove + Zoopla)",
+  "description": "Advanced UK property scraper supporting Rightmove and Zoopla with 30+ property fields, distress detection, cross-site deduplication, monitoring mode, and delisting tracker. Automatically detects portal from URLs and applies appropriate extraction logic. Perfect for property investors and deal sourcers.",
+  "version": "2.2",
   "buildTag": "latest",
   "dockerfile": "./Dockerfile",
   "defaultRunOptions": {

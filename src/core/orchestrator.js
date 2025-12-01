@@ -1,4 +1,5 @@
 const { AdapterFactory } = require('../adapters');
+const Deduplicator = require('./deduplicator');
 
 /**
  * Orchestrator for multi-site property scraping
@@ -9,6 +10,7 @@ class Orchestrator {
     this.config = config;
     this.adapters = new Map(); // site -> adapter instance
     this.statistics = new Map(); // site -> stats object
+    this.crossSiteDeduplication = config.crossSiteDeduplication !== false; // default true
   }
 
   /**
@@ -221,6 +223,44 @@ class Orchestrator {
   getProcessingSites(urls) {
     const grouped = this.groupUrlsBySite(urls);
     return Array.from(grouped.keys());
+  }
+
+  /**
+   * Applies cross-site deduplication to properties
+   * @param {Array<Object>} properties - Properties from all sites
+   * @returns {Array<Object>} Deduplicated properties
+   */
+  applyDeduplication(properties) {
+    if (!this.crossSiteDeduplication) {
+      console.log('\nCross-site deduplication disabled');
+      return properties;
+    }
+
+    if (properties.length === 0) {
+      return properties;
+    }
+
+    // Check if we have properties from multiple sites
+    const sites = new Set(properties.map(p => p.source || p._site));
+    if (sites.size < 2) {
+      console.log(`\nOnly one site (${Array.from(sites)[0]}) - skipping deduplication`);
+      return properties;
+    }
+
+    // Apply deduplication
+    const deduplicated = Deduplicator.deduplicate(properties);
+    
+    // Log statistics
+    const stats = Deduplicator.getStatistics(properties, deduplicated);
+    console.log(`\n=== Deduplication Results ===`);
+    console.log(`Original properties: ${stats.originalCount}`);
+    console.log(`After deduplication: ${stats.deduplicatedCount}`);
+    console.log(`Duplicates removed: ${stats.duplicatesRemoved}`);
+    console.log(`Duplicate groups: ${stats.duplicateGroups}`);
+    console.log(`Deduplication rate: ${stats.deduplicationRate}`);
+    console.log(`==============================\n`);
+
+    return deduplicated;
   }
 }
 
