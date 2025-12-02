@@ -185,23 +185,34 @@
         },
         "properties": {
           "rightmove": {
+            "title": "Rightmove Configuration",
             "type": "object",
+            "description": "Rightmove-specific settings",
+            "editor": "json",
             "properties": {
               "enabled": {
+                "title": "Enabled",
                 "type": "boolean",
-                "description": "Enable or disable Rightmove scraping"
+                "description": "Enable or disable Rightmove scraping",
+                "default": true
               },
               "maxPages": {
+                "title": "Max Pages",
                 "type": "integer",
-                "description": "Maximum pages to scrape for Rightmove"
+                "description": "Maximum pages to scrape for Rightmove",
+                "minimum": 1
               },
               "maxItems": {
+                "title": "Max Items",
                 "type": "integer",
-                "description": "Maximum items to extract from Rightmove"
+                "description": "Maximum items to extract from Rightmove",
+                "minimum": 1
               },
               "distressKeywords": {
+                "title": "Distress Keywords",
                 "type": "array",
                 "description": "Rightmove-specific distress keywords (merged with global)",
+                "editor": "stringList",
                 "items": {
                   "type": "string"
                 }
@@ -209,23 +220,34 @@
             }
           },
           "zoopla": {
+            "title": "Zoopla Configuration",
             "type": "object",
+            "description": "Zoopla-specific settings",
+            "editor": "json",
             "properties": {
               "enabled": {
+                "title": "Enabled",
                 "type": "boolean",
-                "description": "Enable or disable Zoopla scraping"
+                "description": "Enable or disable Zoopla scraping",
+                "default": true
               },
               "maxPages": {
+                "title": "Max Pages",
                 "type": "integer",
-                "description": "Maximum pages to scrape for Zoopla"
+                "description": "Maximum pages to scrape for Zoopla",
+                "minimum": 1
               },
               "maxItems": {
+                "title": "Max Items",
                 "type": "integer",
-                "description": "Maximum items to extract from Zoopla"
+                "description": "Maximum items to extract from Zoopla",
+                "minimum": 1
               },
               "distressKeywords": {
+                "title": "Distress Keywords",
                 "type": "array",
                 "description": "Zoopla-specific distress keywords (merged with global)",
+                "editor": "stringList",
                 "items": {
                   "type": "string"
                 }
