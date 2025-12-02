@@ -36,12 +36,12 @@ async function createCrawler(config) {
       useChrome: true,
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     },
-    navigationTimeoutSecs: 60,
+    navigationTimeoutSecs: 120,
     maxRequestRetries: 3,
     requestHandlerTimeoutSecs: 180,
     preNavigationHooks: [
       async ({ page, request }) => {
-        const delay = Math.floor(Math.random() * 2000) + 1000;
+        const delay = Math.floor(Math.random() * 1000) + 500;
         console.log(`Waiting ${delay}ms before navigation...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         
@@ -78,9 +78,9 @@ async function scrapeProperties(url, adapter, maxItems, maxPages, distressKeywor
       console.log(`Processing page: ${request.url}`);
       
       try {
-        await page.waitForLoadState('networkidle', { timeout: 30000 });
+        await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
       } catch (error) {
-        console.warn(`Network idle timeout: ${error.message}`);
+        console.warn(`Page load timeout: ${error.message}`);
       }
       
       const remainingSlots = maxItems - itemsExtracted;
@@ -147,9 +147,9 @@ async function scrapePropertyDetail(url, adapter, distressKeywords, proxy, fullP
     
     const requestHandler = async ({ page }) => {
       try {
-        await page.waitForLoadState('networkidle', { timeout: 30000 });
+        await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
       } catch (error) {
-        console.warn(`Network idle timeout: ${error.message}`);
+        console.warn(`Page load timeout: ${error.message}`);
       }
       
       const jsData = await adapter.extractFromJavaScript(page);
