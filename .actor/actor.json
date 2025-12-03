@@ -4,6 +4,10 @@
   "title": "UK Property Scraper - Multi-Site (Rightmove + Zoopla)",
   "description": "Advanced UK property scraper supporting Rightmove and Zoopla with 30+ property fields, distress detection, cross-site deduplication, monitoring mode, and delisting tracker. Automatically detects portal from URLs and applies appropriate extraction logic. Perfect for property investors and deal sourcers.",
   "version": "2.2",
+  "output": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
   "buildTag": "latest",
   "dockerfile": "./Dockerfile",
   "defaultRunOptions": {
