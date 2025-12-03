@@ -1,222 +1,162 @@
 {
-  "actorDatasetSchemaVersion": 1,
-  "title": "Property Listing",
-  "type": "object",
-  "description": "A property listing from UK property portals",
-  "properties": {
-    "id": {
-      "type": ["string", "null"],
-      "description": "Unique property ID from the portal"
-    },
-    "url": {
-      "type": ["string", "null"],
-      "description": "Full property URL"
-    },
-    "source": {
-      "type": ["string", "null"],
-      "description": "Portal name (rightmove, zoopla, etc.)"
-    },
-    "sourceUrl": {
-      "type": ["string", "null"],
-      "description": "Original URL from the portal"
-    },
-    "address": {
-      "type": ["string", "null"],
-      "description": "Full property address"
-    },
-    "displayAddress": {
-      "type": ["string", "null"],
-      "description": "Formatted display address"
-    },
-    "price": {
-      "type": ["string", "null"],
-      "description": "Property price"
-    },
-    "description": {
-      "type": ["string", "null"],
-      "description": "Property description"
-    },
-    "propertyType": {
-      "type": ["string", "null"],
-      "description": "Type of property (e.g., Detached, Flat)"
-    },
-    "bedrooms": {
-      "type": ["number", "null"],
-      "description": "Number of bedrooms"
-    },
-    "bathrooms": {
-      "type": ["number", "null"],
-      "description": "Number of bathrooms"
-    },
-    "coordinates": {
-      "type": ["object", "null"],
-      "description": "Geographic coordinates",
-      "properties": {
-        "latitude": { "type": "number" },
-        "longitude": { "type": "number" }
+  "actorSpecification": 1,
+  "fields": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": ["string", "null"],
+        "description": "Unique property ID from the portal"
+      },
+      "url": {
+        "type": ["string", "null"],
+        "description": "Full property URL"
+      },
+      "source": {
+        "type": ["string", "null"],
+        "description": "Portal name (rightmove, zoopla, etc.)"
+      },
+      "address": {
+        "type": ["string", "null"],
+        "description": "Full property address"
+      },
+      "price": {
+        "type": ["string", "null"],
+        "description": "Property price"
+      },
+      "description": {
+        "type": ["string", "null"],
+        "description": "Property description"
+      },
+      "propertyType": {
+        "type": ["string", "null"],
+        "description": "Type of property"
+      },
+      "bedrooms": {
+        "type": ["number", "null"],
+        "description": "Number of bedrooms"
+      },
+      "bathrooms": {
+        "type": ["number", "null"],
+        "description": "Number of bathrooms"
+      },
+      "images": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Array of image URLs"
+      },
+      "addedOn": {
+        "type": ["string", "null"],
+        "description": "Date property was first listed"
+      },
+      "distressKeywordsMatched": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Distress keywords found"
+      },
+      "distressScoreRule": {
+        "type": ["number", "null"],
+        "description": "Distress score (0-10)"
+      },
+      "agent": {
+        "type": ["string", "null"],
+        "description": "Agent or agency name"
+      },
+      "agentPhone": {
+        "type": ["string", "null"],
+        "description": "Agent contact phone"
+      },
+      "tenure": {
+        "type": ["string", "null"],
+        "description": "Property tenure"
+      },
+      "features": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Property features"
+      },
+      "_isDuplicate": {
+        "type": ["boolean", "null"],
+        "description": "Cross-site duplicate flag"
+      },
+      "_scrapedAt": {
+        "type": ["string", "null"],
+        "description": "Timestamp when scraped"
       }
-    },
-    "outcode": {
-      "type": ["string", "null"],
-      "description": "UK postcode outcode"
-    },
-    "incode": {
-      "type": ["string", "null"],
-      "description": "UK postcode incode"
-    },
-    "countryCode": {
-      "type": ["string", "null"],
-      "description": "ISO country code"
-    },
-    "tenure": {
-      "type": ["string", "null"],
-      "description": "Property tenure (Freehold, Leasehold)"
-    },
-    "councilTaxBand": {
-      "type": ["string", "null"],
-      "description": "Council tax band"
-    },
-    "images": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Array of image URLs"
-    },
-    "floorplans": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "url": { "type": "string" },
-          "caption": { "type": "string" }
-        }
+    }
+  },
+  "views": {
+    "overview": {
+      "title": "Overview",
+      "transformation": {
+        "fields": [
+          "id",
+          "url",
+          "source",
+          "address",
+          "price",
+          "propertyType",
+          "bedrooms",
+          "bathrooms",
+          "distressScoreRule",
+          "distressKeywordsMatched",
+          "addedOn",
+          "agent",
+          "_isDuplicate"
+        ]
       },
-      "description": "Array of floorplan objects"
-    },
-    "brochures": {
-      "type": "array",
-      "items": {
-        "type": "object",
+      "display": {
+        "component": "table",
         "properties": {
-          "url": { "type": "string" },
-          "caption": { "type": "string" }
-        }
-      },
-      "description": "Array of brochure objects"
-    },
-    "agent": {
-      "type": ["string", "null"],
-      "description": "Agent or agency name"
-    },
-    "agentPhone": {
-      "type": ["string", "null"],
-      "description": "Agent contact phone"
-    },
-    "agentLogo": {
-      "type": ["string", "null"],
-      "description": "Agent logo URL"
-    },
-    "agentDisplayAddress": {
-      "type": ["string", "null"],
-      "description": "Agent office address"
-    },
-    "agentProfileUrl": {
-      "type": ["string", "null"],
-      "description": "Agent profile page URL"
-    },
-    "features": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Property features and amenities"
-    },
-    "nearestStations": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "types": {
-            "type": "array",
-            "items": { "type": "string" }
+          "url": {
+            "label": "Property URL",
+            "format": "link"
           },
-          "distance": { "type": "number" },
-          "unit": { "type": "string" }
+          "source": {
+            "label": "Portal",
+            "format": "text"
+          },
+          "address": {
+            "label": "Address",
+            "format": "text"
+          },
+          "price": {
+            "label": "Price",
+            "format": "text"
+          },
+          "propertyType": {
+            "label": "Type",
+            "format": "text"
+          },
+          "bedrooms": {
+            "label": "Beds",
+            "format": "number"
+          },
+          "bathrooms": {
+            "label": "Baths",
+            "format": "number"
+          },
+          "distressScoreRule": {
+            "label": "Distress Score",
+            "format": "number"
+          },
+          "distressKeywordsMatched": {
+            "label": "Distress Keywords",
+            "format": "array"
+          },
+          "addedOn": {
+            "label": "Added On",
+            "format": "date"
+          },
+          "agent": {
+            "label": "Agent",
+            "format": "text"
+          },
+          "_isDuplicate": {
+            "label": "Duplicate",
+            "format": "boolean"
+          }
         }
-      },
-      "description": "Nearby transport stations"
-    },
-    "addedOn": {
-      "type": ["string", "null"],
-      "description": "Date property was first listed"
-    },
-    "firstVisibleDate": {
-      "type": ["string", "null"],
-      "description": "First date visible on portal"
-    },
-    "listingUpdateDate": {
-      "type": ["string", "null"],
-      "description": "Date listing was last updated"
-    },
-    "published": {
-      "type": ["boolean", "null"],
-      "description": "Whether property is published"
-    },
-    "archived": {
-      "type": ["boolean", "null"],
-      "description": "Whether property is archived"
-    },
-    "sold": {
-      "type": ["boolean", "null"],
-      "description": "Whether property is sold"
-    },
-    "distressKeywordsMatched": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Distress keywords found"
-    },
-    "distressScoreRule": {
-      "type": ["number", "null"],
-      "description": "Distress score (0-10)"
-    },
-    "priceHistory": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "date": { "type": "string" },
-          "price": { "type": "string" }
-        }
-      },
-      "description": "Historical price changes"
-    },
-    "sources": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Portal names if on multiple sites"
-    },
-    "duplicateOf": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "Property IDs this is duplicate of"
-    },
-    "_isDuplicate": {
-      "type": ["boolean", "null"],
-      "description": "Flag for merged duplicate"
-    },
-    "additionalData": {
-      "type": ["object", "null"],
-      "description": "Portal-specific fields"
-    },
-    "_scrapedAt": {
-      "type": ["string", "null"],
-      "description": "Timestamp when scraped"
-    },
-    "_site": {
-      "type": ["string", "null"],
-      "description": "Alias for source field"
-    },
-    "_isNew": {
-      "type": ["boolean", "null"],
-      "description": "Flag for monitoring mode"
+      }
     }
   }
 }
