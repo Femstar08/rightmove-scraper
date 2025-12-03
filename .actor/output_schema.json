@@ -1,0 +1,50 @@
+{
+  "actorOutputSchemaVersion": 1,
+  "title": "UK Property Scraper Output",
+  "description": "Structured property data from Rightmove and Zoopla with distress detection, cross-site deduplication, and comprehensive property details",
+  "type": "object",
+  "properties": {
+    "properties": {
+      "type": "string",
+      "title": "All Properties",
+      "description": "Complete dataset of all scraped properties with full details",
+      "template": "{{links.apiDefaultDatasetUrl}}/items"
+    },
+    "distressedProperties": {
+      "type": "string",
+      "title": "Distressed Properties 🚨",
+      "description": "Properties with distress signals (score > 0)",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?distressScoreRule[gt]=0"
+    },
+    "highDistress": {
+      "type": "string",
+      "title": "High Distress (7-10) 🔴",
+      "description": "Properties with high distress scores indicating strong investment opportunities",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?distressScoreRule[gte]=7"
+    },
+    "duplicates": {
+      "type": "string",
+      "title": "Cross-Site Duplicates",
+      "description": "Properties appearing on multiple portals",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?_isDuplicate=true"
+    },
+    "rightmoveOnly": {
+      "type": "string",
+      "title": "Rightmove Properties",
+      "description": "Properties from Rightmove only",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?source=rightmove"
+    },
+    "zooplaOnly": {
+      "type": "string",
+      "title": "Zoopla Properties",
+      "description": "Properties from Zoopla only",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?source=zoopla"
+    },
+    "newProperties": {
+      "type": "string",
+      "title": "New Properties (Monitoring)",
+      "description": "Newly added properties since last run (monitoring mode only)",
+      "template": "{{links.apiDefaultDatasetUrl}}/items?_isNew=true"
+    }
+  }
+}

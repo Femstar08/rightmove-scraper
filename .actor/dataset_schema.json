@@ -1,0 +1,67 @@
+{
+  "actorDatasetSchemaVersion": 1,
+  "title": "Property Listing",
+  "type": "object",
+  "description": "A property listing from UK property portals",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique property ID from the portal"
+    },
+    "url": {
+      "type": "string",
+      "description": "Full property URL"
+    },
+    "address": {
+      "type": "string",
+      "description": "Property address"
+    },
+    "price": {
+      "type": "string",
+      "description": "Listed price"
+    },
+    "description": {
+      "type": "string",
+      "description": "Property summary"
+    },
+    "bedrooms": {
+      "type": "number",
+      "description": "Number of bedrooms"
+    },
+    "bathrooms": {
+      "type": "number",
+      "description": "Number of bathrooms"
+    },
+    "propertyType": {
+      "type": "string",
+      "description": "Property type (e.g., flat, semi-detached)"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of image URLs"
+    },
+    "addedOn": {
+      "type": "string",
+      "description": "Date the property was added"
+    },
+    "distressKeywordsMatched": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Distress keywords found in listing"
+    },
+    "distressScoreRule": {
+      "type": "number",
+      "description": "Score from 0 to 10 representing distress level"
+    },
+    "source": {
+      "type": "string",
+      "description": "Portal name (rightmove, zoopla, etc.)"
+    }
+  },
+  "required": ["id", "url", "address", "price"]
+}
