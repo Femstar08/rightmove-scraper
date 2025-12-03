@@ -5,63 +5,218 @@
   "description": "A property listing from UK property portals",
   "properties": {
     "id": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Unique property ID from the portal"
     },
     "url": {
-      "type": "string",
+      "type": ["string", "null"],
       "description": "Full property URL"
     },
+    "source": {
+      "type": ["string", "null"],
+      "description": "Portal name (rightmove, zoopla, etc.)"
+    },
+    "sourceUrl": {
+      "type": ["string", "null"],
+      "description": "Original URL from the portal"
+    },
     "address": {
-      "type": "string",
-      "description": "Property address"
+      "type": ["string", "null"],
+      "description": "Full property address"
+    },
+    "displayAddress": {
+      "type": ["string", "null"],
+      "description": "Formatted display address"
     },
     "price": {
-      "type": "string",
-      "description": "Listed price"
+      "type": ["string", "null"],
+      "description": "Property price"
     },
     "description": {
-      "type": "string",
-      "description": "Property summary"
+      "type": ["string", "null"],
+      "description": "Property description"
+    },
+    "propertyType": {
+      "type": ["string", "null"],
+      "description": "Type of property (e.g., Detached, Flat)"
     },
     "bedrooms": {
-      "type": "number",
+      "type": ["number", "null"],
       "description": "Number of bedrooms"
     },
     "bathrooms": {
-      "type": "number",
+      "type": ["number", "null"],
       "description": "Number of bathrooms"
     },
-    "propertyType": {
-      "type": "string",
-      "description": "Property type (e.g., flat, semi-detached)"
+    "coordinates": {
+      "type": ["object", "null"],
+      "description": "Geographic coordinates",
+      "properties": {
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" }
+      }
+    },
+    "outcode": {
+      "type": ["string", "null"],
+      "description": "UK postcode outcode"
+    },
+    "incode": {
+      "type": ["string", "null"],
+      "description": "UK postcode incode"
+    },
+    "countryCode": {
+      "type": ["string", "null"],
+      "description": "ISO country code"
+    },
+    "tenure": {
+      "type": ["string", "null"],
+      "description": "Property tenure (Freehold, Leasehold)"
+    },
+    "councilTaxBand": {
+      "type": ["string", "null"],
+      "description": "Council tax band"
     },
     "images": {
       "type": "array",
+      "items": { "type": "string" },
+      "description": "Array of image URLs"
+    },
+    "floorplans": {
+      "type": "array",
       "items": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "caption": { "type": "string" }
+        }
       },
-      "description": "List of image URLs"
+      "description": "Array of floorplan objects"
+    },
+    "brochures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "caption": { "type": "string" }
+        }
+      },
+      "description": "Array of brochure objects"
+    },
+    "agent": {
+      "type": ["string", "null"],
+      "description": "Agent or agency name"
+    },
+    "agentPhone": {
+      "type": ["string", "null"],
+      "description": "Agent contact phone"
+    },
+    "agentLogo": {
+      "type": ["string", "null"],
+      "description": "Agent logo URL"
+    },
+    "agentDisplayAddress": {
+      "type": ["string", "null"],
+      "description": "Agent office address"
+    },
+    "agentProfileUrl": {
+      "type": ["string", "null"],
+      "description": "Agent profile page URL"
+    },
+    "features": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Property features and amenities"
+    },
+    "nearestStations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "types": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "distance": { "type": "number" },
+          "unit": { "type": "string" }
+        }
+      },
+      "description": "Nearby transport stations"
     },
     "addedOn": {
-      "type": "string",
-      "description": "Date the property was added"
+      "type": ["string", "null"],
+      "description": "Date property was first listed"
+    },
+    "firstVisibleDate": {
+      "type": ["string", "null"],
+      "description": "First date visible on portal"
+    },
+    "listingUpdateDate": {
+      "type": ["string", "null"],
+      "description": "Date listing was last updated"
+    },
+    "published": {
+      "type": ["boolean", "null"],
+      "description": "Whether property is published"
+    },
+    "archived": {
+      "type": ["boolean", "null"],
+      "description": "Whether property is archived"
+    },
+    "sold": {
+      "type": ["boolean", "null"],
+      "description": "Whether property is sold"
     },
     "distressKeywordsMatched": {
       "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Distress keywords found in listing"
+      "items": { "type": "string" },
+      "description": "Distress keywords found"
     },
     "distressScoreRule": {
-      "type": "number",
-      "description": "Score from 0 to 10 representing distress level"
+      "type": ["number", "null"],
+      "description": "Distress score (0-10)"
     },
-    "source": {
-      "type": "string",
-      "description": "Portal name (rightmove, zoopla, etc.)"
+    "priceHistory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string" },
+          "price": { "type": "string" }
+        }
+      },
+      "description": "Historical price changes"
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Portal names if on multiple sites"
+    },
+    "duplicateOf": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Property IDs this is duplicate of"
+    },
+    "_isDuplicate": {
+      "type": ["boolean", "null"],
+      "description": "Flag for merged duplicate"
+    },
+    "additionalData": {
+      "type": ["object", "null"],
+      "description": "Portal-specific fields"
+    },
+    "_scrapedAt": {
+      "type": ["string", "null"],
+      "description": "Timestamp when scraped"
+    },
+    "_site": {
+      "type": ["string", "null"],
+      "description": "Alias for source field"
+    },
+    "_isNew": {
+      "type": ["boolean", "null"],
+      "description": "Flag for monitoring mode"
     }
-  },
-  "required": ["id", "url", "address", "price"]
+  }
 }
