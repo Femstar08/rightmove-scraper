@@ -66,13 +66,14 @@ async function createCrawler(config) {
 /**
  * Scrapes properties from a search URL with pagination
  */
-async function scrapeProperties(url, adapter, maxItems, maxPages, distressKeywords, proxy) {
+async function scrapeProperties(url, adapter, maxItems, maxPages, distressKeywords, proxy, fullPropertyDetails = false, includePriceHistory = false) {
   const allProperties = [];
   let pagesProcessed = 0;
   let itemsExtracted = 0;
 
   try {
     console.log(`Starting pagination: up to ${maxPages} page(s), up to ${maxItems} item(s)`);
+    console.log(`Full property details: ${fullPropertyDetails}, Price history: ${includePriceHistory}`);
     
     const requestHandler = async ({ page, request }) => {
       console.log(`Processing page: ${request.url}`);
@@ -106,6 +107,49 @@ async function scrapeProperties(url, adapter, maxItems, maxPages, distressKeywor
           console.log(`✗ No properties found, stopping pagination`);
           return;
         }
+      }
+      
+      // If fullPropertyDetails is enabled, visit each property page for detailed data
+      if (fullPropertyDetails && pageProperties.length > 0) {
+        console.log(`🔍 Full property details enabled - visiting ${pageProperties.length} property pages...`);
+        const detailedProperties = [];
+        
+        for (let i = 0; i < pageProperties.length && detailedProperties.length < remainingSlots; i++) {
+          const basicProperty = pageProperties[i];
+          
+          if (!basicProperty.url) {
+            console.warn(`⚠️ Property ${i + 1} has no URL, using basic data`);
+            detailedProperties.push(basicProperty);
+            continue;
+          }
+          
+          console.log(`📄 Fetching details for property ${i + 1}/${pageProperties.length}: ${basicProperty.url}`);
+          
+          try {
+            const detailedProperty = await scrapePropertyDetail(
+              basicProperty.url, 
+              adapter, 
+              distressKeywords, 
+              proxy, 
+              fullPropertyDetails, 
+              includePriceHistory
+            );
+            
+            if (detailedProperty) {
+              detailedProperties.push(detailedProperty);
+              console.log(`✅ Got detailed data for property ${detailedProperty.id || 'unknown'}`);
+            } else {
+              console.warn(`❌ Failed to get details, using basic data`);
+              detailedProperties.push(basicProperty);
+            }
+          } catch (error) {
+            console.warn(`❌ Error getting details for ${basicProperty.url}: ${error.message}`);
+            detailedProperties.push(basicProperty);
+          }
+        }
+        
+        pageProperties = detailedProperties;
+        console.log(`✅ Completed detailed extraction for ${pageProperties.length} properties`);
       }
       
       const propertiesToAdd = pageProperties.slice(0, remainingSlots);
@@ -416,7 +460,7 @@ async function main() {
         console.log(`\n=== Search URL ${i + 1}/${input.urls.length} ===`);
         console.log(`URL: ${url}`);
         
-        const result = await scrapeProperties(url, adapter, input.maxItems, input.maxPages, input.distressKeywords, input.proxy);
+        const result = await scrapeProperties(url, adapter, input.maxItems, input.maxPages, input.distressKeywords, input.proxy, input.fullPropertyDetails, input.includePriceHistory);
         
         allProperties.push(...result.properties);
         totalPagesProcessed += result.pagesProcessed;

@@ -32,43 +32,72 @@ class ZooplaAdapter extends BaseSiteAdapter {
   /**
    * Extracts properties from JavaScript data on search results page
    * @param {Object} page - Playwright page object
-   * @param {Array<string>} distressKeywords - Keywords to detect distressed sales
-   * @returns {Promise<Array<Object>>} Array of property objects
+   * @returns {Promise<Object|null>} Raw JavaScript data or null
    */
-  async extractFromJavaScript(page, distressKeywords = []) {
+  async extractFromJavaScript(page) {
     console.log('[ZOOPLA] Extracting properties from JavaScript data...');
     
     try {
       // Extract __PRELOADED_STATE__ from page
-      const properties = await page.evaluate(() => {
+      const jsData = await page.evaluate(() => {
         // Try __PRELOADED_STATE__ first
         if (window.__PRELOADED_STATE__ && 
             window.__PRELOADED_STATE__.listing && 
             window.__PRELOADED_STATE__.listing.regular &&
             window.__PRELOADED_STATE__.listing.regular.listings) {
-          return window.__PRELOADED_STATE__.listing.regular.listings;
+          return {
+            source: '__PRELOADED_STATE__',
+            properties: window.__PRELOADED_STATE__.listing.regular.listings
+          };
         }
         
         // Try __INITIAL_STATE__ as fallback
         if (window.__INITIAL_STATE__ && 
             window.__INITIAL_STATE__.listings) {
-          return window.__INITIAL_STATE__.listings;
+          return {
+            source: '__INITIAL_STATE__',
+            properties: window.__INITIAL_STATE__.listings
+          };
         }
         
         return null;
       });
 
-      if (!properties || properties.length === 0) {
+      if (!jsData) {
+        console.log('[ZOOPLA] No JavaScript data found');
+        return null;
+      }
+
+      console.log(`[ZOOPLA] Found JavaScript data from ${jsData.source}`);
+      return jsData;
+    } catch (error) {
+      console.error('[ZOOPLA] Error extracting from JavaScript:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Parses properties from JavaScript data
+   * @param {Object} jsData - Raw JavaScript data from extractFromJavaScript
+   * @param {Array<string>} distressKeywords - Keywords to detect distressed sales
+   * @returns {Array<Object>} Array of processed property objects
+   */
+  parseFromPageModel(jsData, distressKeywords = []) {
+    console.log('[ZOOPLA] Parsing properties from JavaScript data...');
+    
+    try {
+      if (!jsData || !jsData.properties) {
         console.log('[ZOOPLA] No properties found in JavaScript data');
         return [];
       }
 
+      const properties = jsData.properties;
       console.log(`[ZOOPLA] Found ${properties.length} properties in JavaScript data`);
 
       // Map Zoopla properties to our format
       return properties.map(prop => this.parseZooplaProperty(prop, distressKeywords));
     } catch (error) {
-      console.error('[ZOOPLA] Error extracting from JavaScript:', error.message);
+      console.error('[ZOOPLA] Error parsing JavaScript data:', error.message);
       return [];
     }
   }
@@ -94,32 +123,33 @@ class ZooplaAdapter extends BaseSiteAdapter {
   }
 
   /**
-   * Extracts full property details from a property detail page
-   * @param {Object} page - Playwright page object
+   * Extracts full property details from property data
+   * @param {Object} propertyData - Raw property data
    * @param {Array<string>} distressKeywords - Keywords to detect distressed sales
-   * @returns {Promise<Object|null>} Property object with full details
+   * @param {boolean} includePriceHistory - Whether to include price history
+   * @returns {Object|null} Property object with full details
    */
-  async extractFullPropertyDetails(page, distressKeywords = []) {
+  extractFullPropertyDetails(propertyData, distressKeywords = [], includePriceHistory = false) {
     console.log('[ZOOPLA] Extracting full property details...');
     
     try {
-      // Extract property details from __PRELOADED_STATE__
-      const propertyData = await page.evaluate(() => {
-        if (window.__PRELOADED_STATE__ && 
-            window.__PRELOADED_STATE__.listing && 
-            window.__PRELOADED_STATE__.listing.propertyDetails) {
-          return window.__PRELOADED_STATE__.listing.propertyDetails;
-        }
-        
-        return null;
-      });
-
       if (!propertyData) {
+        console.log('[ZOOPLA] No property data provided');
+        return null;
+      }
+
+      // If propertyData has a properties array, take the first one
+      let data = propertyData;
+      if (propertyData.properties && Array.isArray(propertyData.properties)) {
+        data = propertyData.properties[0];
+      }
+
+      if (!data) {
         console.log('[ZOOPLA] No property details found');
         return null;
       }
 
-      return this.parseZooplaPropertyDetails(propertyData, distressKeywords);
+      return this.parseZooplaPropertyDetails(data, distressKeywords, includePriceHistory);
     } catch (error) {
       console.error('[ZOOPLA] Error extracting property details:', error.message);
       return null;
@@ -182,9 +212,10 @@ class ZooplaAdapter extends BaseSiteAdapter {
    * Parses full Zoopla property details
    * @param {Object} data - Raw Zoopla property details object
    * @param {Array<string>} distressKeywords - Keywords to detect distressed sales
+   * @param {boolean} includePriceHistory - Whether to include price history
    * @returns {Object} Normalized property object with full details
    */
-  parseZooplaPropertyDetails(data, distressKeywords = []) {
+  parseZooplaPropertyDetails(data, distressKeywords = [], includePriceHistory = false) {
     const description = data.detailed_description || data.description || '';
     const distress = this.detectDistress(description, distressKeywords);
     
@@ -219,6 +250,14 @@ class ZooplaAdapter extends BaseSiteAdapter {
       incode: postcodeData?.incode || null,
       countryCode: 'GB',
       _scrapedAt: new Date().toISOString(),
+      // Price history (if requested and available)
+      ...(includePriceHistory && data.price_history ? {
+        priceHistory: data.price_history.map(entry => ({
+          date: entry.date,
+          price: this.formatPrice(entry.price),
+          priceChange: entry.price_change || null
+        }))
+      } : {}),
       // Zoopla-specific data
       additionalData: {
         zooplaListingId: data.listing_id,

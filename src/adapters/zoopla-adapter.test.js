@@ -253,4 +253,87 @@ describe('ZooplaAdapter', () => {
       expect(result.address).toBe('Test Street, London');
     });
   });
+
+  describe('parseFromPageModel', () => {
+    test('should parse properties from JavaScript data', () => {
+      const jsData = {
+        source: '__PRELOADED_STATE__',
+        properties: [
+          {
+            listing_id: '12345',
+            displayable_address: 'Test Street, London SW1A 1AA',
+            price: 250000,
+            num_bedrooms: 2,
+            num_bathrooms: 1,
+            property_type: 'Flat',
+            description: 'A lovely property',
+            details_url: 'https://www.zoopla.co.uk/for-sale/details/12345'
+          }
+        ]
+      };
+
+      const result = adapter.parseFromPageModel(jsData, ['reduced']);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toHaveProperty('id', '12345');
+      expect(result[0]).toHaveProperty('address', 'Test Street, London SW1A 1AA');
+      expect(result[0]).toHaveProperty('price', '£250,000');
+    });
+
+    test('should return empty array for null data', () => {
+      const result = adapter.parseFromPageModel(null, []);
+      expect(result).toEqual([]);
+    });
+
+    test('should return empty array for data without properties', () => {
+      const jsData = { source: '__PRELOADED_STATE__' };
+      const result = adapter.parseFromPageModel(jsData, []);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('extractFullPropertyDetails', () => {
+    test('should extract full property details', () => {
+      const propertyData = {
+        listing_id: '12345',
+        displayable_address: 'Test Street, London SW1A 1AA',
+        price: 250000,
+        num_bedrooms: 2,
+        num_bathrooms: 1,
+        property_type: 'Flat',
+        description: 'A lovely property with reduced price',
+        details_url: 'https://www.zoopla.co.uk/for-sale/details/12345',
+        features: ['Garden', 'Parking'],
+        latitude: 51.5074,
+        longitude: -0.1278
+      };
+
+      const result = adapter.extractFullPropertyDetails(propertyData, ['reduced'], false);
+
+      expect(result).toHaveProperty('id', '12345');
+      expect(result).toHaveProperty('features', ['Garden', 'Parking']);
+      expect(result).toHaveProperty('coordinates');
+      expect(result.coordinates).toEqual({ latitude: 51.5074, longitude: -0.1278 });
+      expect(result).toHaveProperty('distressKeywordsMatched', ['reduced']);
+    });
+
+    test('should handle property data with properties array', () => {
+      const propertyData = {
+        properties: [{
+          listing_id: '12345',
+          displayable_address: 'Test Street, London SW1A 1AA',
+          price: 250000
+        }]
+      };
+
+      const result = adapter.extractFullPropertyDetails(propertyData, [], false);
+
+      expect(result).toHaveProperty('id', '12345');
+    });
+
+    test('should return null for null data', () => {
+      const result = adapter.extractFullPropertyDetails(null, [], false);
+      expect(result).toBeNull();
+    });
+  });
 });
